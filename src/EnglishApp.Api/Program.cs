@@ -68,6 +68,7 @@ builder.Services.AddHttpClient(TurnstileService.HttpClientName, c => c.Timeout =
     builder.Services.AddScoped<IScenarioService, ScenarioService>();
     builder.Services.AddScoped<IStudyService, StudyService>();
     builder.Services.AddScoped<IStatsService, StatsService>();
+builder.Services.AddScoped<ILeaderboardService, LeaderboardService>();
     builder.Services.AddScoped<IPlacementService, PlacementService>();
     builder.Services.AddScoped<IJobService, JobService>();
     builder.Services.AddScoped<IContentSeeder, ContentSeeder>();

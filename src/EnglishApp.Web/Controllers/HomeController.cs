@@ -106,6 +106,13 @@ public sealed class PracticeController : Controller
     }
 }
 
+/// <summary>Sıralama: tüm kullanıcıların özet durumu (veri AJAX ile API'den).</summary>
+[Authorize]
+public sealed class LeaderboardController : Controller
+{
+    public IActionResult Index() => View();
+}
+
 [Authorize]
 public sealed class ProfileController : Controller
 {

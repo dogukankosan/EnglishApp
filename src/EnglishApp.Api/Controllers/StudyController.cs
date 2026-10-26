@@ -75,3 +75,13 @@ public sealed class JobsController(IJobService jobs) : ApiControllerBase
         return Success(await jobs.RunAsync(ct));
     }
 }
+
+/// <summary>Sıralama: herkes (admin dahil) tüm aktif kullanıcıların özet durumunu görür.</summary>
+[Route("api/v1/leaderboard")]
+public sealed class LeaderboardController(ILeaderboardService service) : ApiControllerBase
+{
+    /// <param name="period">today | week | month (varsayılan week)</param>
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<LeaderboardDto>>> Get([FromQuery] string? period, CancellationToken ct) =>
+        Success(await service.GetAsync(period, ct));
+}

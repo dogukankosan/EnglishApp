@@ -80,6 +80,7 @@
                     <li class="nav-item"><a class="nav-link @Active("Study")" asp-area="" asp-controller="Study" asp-action="Index"><i class="bi bi-lightning-charge me-1"></i>Çalış</a></li>
                     <li class="nav-item"><a class="nav-link @Active("Practice")" asp-area="" asp-controller="Practice" asp-action="Index"><i class="bi bi-chat-dots me-1"></i>AI Pratik</a></li>
                     <li class="nav-item"><a class="nav-link @Active("Words")" asp-area="" asp-controller="Words" asp-action="Index"><i class="bi bi-journal-text me-1"></i>Kelimelerim</a></li>
+                    <li class="nav-item"><a class="nav-link @Active("Leaderboard")" asp-area="" asp-controller="Leaderboard" asp-action="Index"><i class="bi bi-trophy me-1"></i>Sıralama</a></li>
                     @if (isAdmin)
                     {
                         <li class="nav-item dropdown">
@@ -109,6 +110,7 @@
         <a class="@Active("Study")" asp-area="" asp-controller="Study" asp-action="Index"><i class="bi bi-lightning-charge"></i><span>Çalış</span></a>
         <a class="@Active("Practice")" asp-area="" asp-controller="Practice" asp-action="Index"><i class="bi bi-chat-dots"></i><span>Pratik</span></a>
         <a class="@Active("Words")" asp-area="" asp-controller="Words" asp-action="Index"><i class="bi bi-journal-text"></i><span>Kelimeler</span></a>
+        <a class="@Active("Leaderboard")" asp-area="" asp-controller="Leaderboard" asp-action="Index"><i class="bi bi-trophy"></i><span>Sıralama</span></a>
         <a class="@Active("Profile")" asp-area="" asp-controller="Profile" asp-action="Index"><i class="bi bi-person"></i><span>Profil</span></a>
     </nav>
 

@@ -293,6 +293,7 @@ Notlar:
 - **Haftalık AI koç:** son 7 günün verisi (kart istatistikleri, unutulan kelimeler, sohbet ve yazı hataları, zayıf dikteler, dinleme testleri) özetlenip modele gider; Türkçe özet, 3 odak noktası, kalıplar ve günlük plan döner. Hafta (Pazartesi) başına bir kayıt (`ai.CoachReports`). Durumum panelinde kart; haftalık rapor mailine de eklenir (üretilemezse mail koçsuz gider).
 - **Hedef + dinlenme günü:** Profil > Hedefim: hedef seviye (kelime eşiği A2 500, B1 1000, B2 2500, C1 4000) ve tarih. Durumum panelinde ilerleme, gereken günlük kelime, son 14 günün temposuna göre "x gün öndesin / gerisindesin". Dinlenme günü açıksa her hafta (Pzt-Paz) 1 kaçırılan gün seriyi bozmaz.
 - DB: `database/008_Learning_Extras.sql`, `database/009_Media_Seed.sql`.
+- **Sıralama** (`/Leaderboard`, `GET /api/v1/leaderboard?period=today|week|month`): tüm aktif kullanıcılar (admin dahil) birbirinin özet durumunu görür: tahmini seviye, hedef seviye, seri, bugün çalıştı mı, dönemdeki kart / yeni kelime / süre / doğruluk, kelime dağarcığı. Puan = çalışılan kart + 2 × yeni kelime; eşit puanlılar aynı sırayı paylaşır. Hafta Pazartesi, ay ayın 1'inden başlar. E-posta, kullanıcı numarası ve içerik (kelimeler, sohbet, yazı) paylaşılmaz.
 
 ## 16. Açık Konular
 
