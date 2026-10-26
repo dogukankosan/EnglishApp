@@ -1,0 +1,126 @@
+@using System.Security.Claims
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var area = ViewContext.RouteData.Values["area"]?.ToString();
+    var userName = User.Identity?.Name ?? "";
+    var photo = User.FindFirst(WebClaims.Photo)?.Value;
+    var isAdmin = User.IsInRole("Admin");
+    var initials = string.Concat(userName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpper(p[0], new System.Globalization.CultureInfo("tr-TR"))));
+    string Active(string c) => controller == c && string.IsNullOrEmpty(area) ? "active" : "";
+    // Tema çerezden okunur ve sunucuda basılır: sayfa açılırken beyaz/siyah yanıp sönmez. Varsayılan açık tema.
+    var theme = Context.Request.Cookies["theme"] == "dark" ? "dark" : "light";
+}
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="@theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+    <title>@ViewData["Title"] · EnglishApp</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="~/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    @await RenderSectionAsync("Styles", required: false)
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg sticky-top app-navbar">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-controller="Home" asp-action="Index">
+                <span class="brand-logo">E</span><span class="fw-bold">EnglishApp</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-2 order-lg-last">
+                <button class="btn btn-icon" id="themeToggle" type="button" title="Tema değiştir"><i class="bi bi-moon-stars"></i></button>
+                <div class="dropdown">
+                    <button class="btn btn-icon p-0 border-0" data-bs-toggle="dropdown" aria-expanded="false" title="@userName">
+                        @if (!string.IsNullOrEmpty(photo))
+                        {
+                            <img src="/bff/files/profile/@photo" class="avatar avatar-sm" alt="" data-user-avatar />
+                        }
+                        else
+                        {
+                            <span class="avatar avatar-sm avatar-initials" data-user-avatar>@initials</span>
+                        }
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li class="px-3 py-2 small text-body-secondary" data-user-name>@userName</li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" asp-area="" asp-controller="Profile" asp-action="Index"><i class="bi bi-person me-2"></i>Profilim</a></li>
+                        @if (isAdmin)
+                        {
+                            @* Mobilde üst menü kapalı olduğu için yönetim linkleri burada da var *@
+                            <li class="d-lg-none"><hr class="dropdown-divider" /></li>
+                            <li class="d-lg-none"><a class="dropdown-item" asp-area="Admin" asp-controller="Users" asp-action="Index"><i class="bi bi-people me-2"></i>Kullanıcılar</a></li>
+                            <li class="d-lg-none"><a class="dropdown-item" asp-area="Admin" asp-controller="Content" asp-action="Index"><i class="bi bi-collection me-2"></i>İçerik</a></li>
+                    <li class="d-lg-none"><a class="dropdown-item" asp-area="Admin" asp-controller="Settings" asp-action="Index"><i class="bi bi-gear me-2"></i>Ayarlar</a></li>
+                            <li class="d-lg-none"><a class="dropdown-item" asp-area="Admin" asp-controller="Logs" asp-action="Index"><i class="bi bi-file-earmark-text me-2"></i>Loglar</a></li>
+                        }
+                        <li>
+                            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                                <button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Çıkış</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                <button class="navbar-toggler border-0 d-none d-md-block d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <div class="collapse navbar-collapse" id="mainNav">
+                <ul class="navbar-nav me-auto ms-lg-4 gap-lg-1">
+                    <li class="nav-item"><a class="nav-link @Active("Home")" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-speedometer2 me-1"></i>Durumum</a></li>
+                    <li class="nav-item"><a class="nav-link @Active("Study")" asp-area="" asp-controller="Study" asp-action="Index"><i class="bi bi-lightning-charge me-1"></i>Çalış</a></li>
+                    <li class="nav-item"><a class="nav-link @Active("Practice")" asp-area="" asp-controller="Practice" asp-action="Index"><i class="bi bi-chat-dots me-1"></i>AI Pratik</a></li>
+                    <li class="nav-item"><a class="nav-link @Active("Words")" asp-area="" asp-controller="Words" asp-action="Index"><i class="bi bi-journal-text me-1"></i>Kelimelerim</a></li>
+                    @if (isAdmin)
+                    {
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle @(area == "Admin" ? "active" : "")" href="#" data-bs-toggle="dropdown"><i class="bi bi-shield-lock me-1"></i>Yönetim</a>
+                            <ul class="dropdown-menu shadow-sm">
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Users" asp-action="Index"><i class="bi bi-people me-2"></i>Kullanıcılar</a></li>
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Content" asp-action="Index"><i class="bi bi-collection me-2"></i>İçerik</a></li>
+                            <li><a class="dropdown-item" asp-area="Admin" asp-controller="Settings" asp-action="Index"><i class="bi bi-gear me-2"></i>Ayarlar</a></li>
+                                <li><a class="dropdown-item" asp-area="Admin" asp-controller="Logs" asp-action="Index"><i class="bi bi-file-earmark-text me-2"></i>Loglar</a></li>
+                            </ul>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container app-main">
+        @RenderBody()
+    </main>
+
+    <partial name="_Footer" />
+
+    @* Mobil alt menü *@
+    <nav class="bottom-nav d-lg-none">
+        <a class="@Active("Home")" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-speedometer2"></i><span>Durumum</span></a>
+        <a class="@Active("Study")" asp-area="" asp-controller="Study" asp-action="Index"><i class="bi bi-lightning-charge"></i><span>Çalış</span></a>
+        <a class="@Active("Practice")" asp-area="" asp-controller="Practice" asp-action="Index"><i class="bi bi-chat-dots"></i><span>Pratik</span></a>
+        <a class="@Active("Words")" asp-area="" asp-controller="Words" asp-action="Index"><i class="bi bi-journal-text"></i><span>Kelimeler</span></a>
+        <a class="@Active("Profile")" asp-area="" asp-controller="Profile" asp-action="Index"><i class="bi bi-person"></i><span>Profil</span></a>
+    </nav>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js"></script>
+    <script src="~/js/password-toggle.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (TempData["Toast"] is string toast)
+    {
+        <script>App.toast(@Json.Serialize(toast));</script>
+    }
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

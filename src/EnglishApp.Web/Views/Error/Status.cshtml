@@ -1,0 +1,68 @@
+@model EnglishApp.Web.Controllers.ErrorViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    Layout = "_ErrorLayout";
+    var isAuth = User.Identity?.IsAuthenticated == true;
+}
+<div class="error-card text-center">
+    <div class="error-code" aria-hidden="true">@Model.StatusCode</div>
+    <div class="error-icon"><i class="bi @Model.Icon"></i></div>
+    <h1 class="h4 fw-bold mb-2">@Model.Title</h1>
+    <p class="text-body-secondary mb-4">@Model.Message</p>
+
+    @if (Model.StatusCode == 404 && !string.IsNullOrEmpty(Model.OriginalPath))
+    {
+        <p class="small text-body-secondary mb-4">İstenen adres: <code>@Model.OriginalPath</code></p>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.CorrelationId))
+    {
+        <div class="error-ref mb-4">
+            <span class="small text-body-secondary">Hata kodu</span>
+            <code id="refCode">@Model.CorrelationId</code>
+            <button type="button" class="btn btn-sm btn-icon" id="copyRef" title="Kopyala"><i class="bi bi-clipboard"></i></button>
+        </div>
+    }
+
+    <div class="d-flex flex-wrap gap-2 justify-content-center">
+        @if (Model.StatusCode == 401)
+        {
+            <a href="/Account/Login" class="btn btn-primary"><i class="bi bi-box-arrow-in-right me-1"></i>Giriş yap</a>
+        }
+        else
+        {
+            <a href="/" class="btn btn-primary"><i class="bi bi-house me-1"></i>Ana sayfaya dön</a>
+        }
+        <button type="button" class="btn btn-outline-primary" onclick="history.length > 1 ? history.back() : location.href = '/'">
+            <i class="bi bi-arrow-left me-1"></i>Geri dön
+        </button>
+        @if (Model.StatusCode >= 500)
+        {
+            <button type="button" class="btn btn-outline-secondary" onclick="location.reload()"><i class="bi bi-arrow-clockwise me-1"></i>Tekrar dene</button>
+        }
+    </div>
+
+    @if (isAuth && Model.StatusCode == 404)
+    {
+        <div class="error-links mt-4">
+            <div class="small text-body-secondary mb-2">Belki bunlardan birini arıyordun:</div>
+            <a href="/"><i class="bi bi-speedometer2"></i>Durumum</a>
+            <a href="/Study"><i class="bi bi-lightning-charge"></i>Çalış</a>
+            <a href="/Practice"><i class="bi bi-chat-dots"></i>AI Pratik</a>
+            <a href="/Words"><i class="bi bi-journal-text"></i>Kelimelerim</a>
+        </div>
+    }
+
+    <p class="small text-body-secondary mt-4 mb-0 fst-italic" lang="en">
+        @(Model.StatusCode == 404 ? "\"Excuse me, I think I'm lost.\"" : Model.StatusCode >= 500 ? "\"Sorry, something went wrong on our side.\"" : "\"Sorry, you can't go in there.\"")
+    </p>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('copyRef')?.addEventListener('click', function () {
+            navigator.clipboard?.writeText(document.getElementById('refCode').textContent.trim());
+            this.innerHTML = '<i class="bi bi-check2"></i>';
+        });
+    </script>
+}

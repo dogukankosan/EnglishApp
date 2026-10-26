@@ -1,0 +1,216 @@
+@{
+    ViewData["Title"] = "İçerik";
+}
+<h1 class="h3 page-title">İçerik</h1>
+<p class="page-subtitle">AI ile yeni senaryo üret, kontrol edip yayınla. Genel kelime havuzunu (ör. en sık 3000 kelime) içeri al ve AI ile anlamlarını doldur.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-magic me-2"></i>AI ile senaryo üret</div>
+            <div class="card-body">
+                <form id="genForm" class="row g-2">
+                    <div class="col-7"><label class="form-label small fw-semibold">Kategori</label><select class="form-select" id="gCategory"></select></div>
+                    <div class="col-5"><label class="form-label small fw-semibold">Seviye</label>
+                        <select class="form-select" id="gLevel"><option>A1</option><option selected>A2</option><option>B1</option><option>B2</option></select></div>
+                    <div class="col-12"><label class="form-label small fw-semibold">Konu *</label><input class="form-control" id="gTopic" maxlength="200" placeholder="Ör: Eczanede baş ağrısı ilacı istemek" /></div>
+                    <div class="col-12"><label class="form-label small fw-semibold">Not</label><input class="form-control" id="gNotes" maxlength="400" placeholder="Ör: İngiliz aksanı, eczacı reçete sorsun" /></div>
+                    <div class="col-12 d-flex justify-content-end"><button class="btn btn-primary" id="genBtn" type="submit"><i class="bi bi-magic me-1"></i>Taslak üret</button></div>
+                </form>
+                <div class="form-text">Üretilen senaryo <b>taslak</b> olarak kaydedilir; kullanıcılar yayınlayana kadar görmez.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between"><span><i class="bi bi-database me-2"></i>Kelime havuzu</span><button class="btn btn-sm btn-icon" id="refreshStats" title="Yenile"><i class="bi bi-arrow-clockwise"></i></button></div>
+            <div class="card-body">
+                <div class="row g-2 text-center mb-3" id="poolStats">
+                    <div class="col-3"><div class="fw-bold fs-5" id="psTotal">-</div><div class="small text-body-secondary">Toplam</div></div>
+                    <div class="col-3"><div class="fw-bold fs-5" id="psPool">-</div><div class="small text-body-secondary">Genel havuz</div></div>
+                    <div class="col-3"><div class="fw-bold fs-5 text-warning" id="psEnrich">-</div><div class="small text-body-secondary">Anlamı boş</div></div>
+                    <div class="col-3"><div class="fw-bold fs-5 text-danger" id="psAudio">-</div><div class="small text-body-secondary">Sesi eksik</div></div>
+                </div>
+                <textarea class="form-control font-monospace small mb-2" id="wImport" rows="4" lang="en" spellcheck="false" placeholder="Her satıra bir kelime, sık kullanılandan aza (ör. NGSL listesi):&#10;the&#10;be&#10;have"></textarea>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-outline-primary" id="importBtn"><i class="bi bi-upload me-1"></i>İçeri al</button>
+                    <button class="btn btn-primary ms-auto" id="enrichBtn"><i class="bi bi-stars me-1"></i>Anlamları AI ile doldur</button>
+                </div>
+                <div class="mt-2 d-none" id="enrichProgress"><div class="progress mb-1"><div class="progress-bar" style="width:0%"></div></div><div class="small text-body-secondary" id="enrichText"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Senaryolar</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Başlık</th><th>Kategori</th><th>Seviye</th><th class="text-center">Kelime / Satır</th><th class="text-center">Ses</th><th>Durum</th><th></th></tr></thead>
+            <tbody id="scList"><tr><td colspan="7"><div class="skeleton" style="height:60px"></div></td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" id="audioCard">
+    <div class="card-header d-flex justify-content-between align-items-center"><span><i class="bi bi-soundwave me-2"></i>Eksik sesler</span><button class="btn btn-sm btn-outline-primary" id="manifestBtn"><i class="bi bi-download me-1"></i>Listeyi indir</button></div>
+    <div class="card-body small">
+        <p class="mb-2">Yeni içeriğin hazır MP3'ü yoksa uygulama doğal sese (Gemini), o da yoksa tarayıcı sesine düşer. Kaliteli hazır ses için: <b>Listeyi indir</b> ile <code>audio-manifest.json</code> dosyasını <code>tools/audiogen</code> klasörüne koy, kendi bilgisayarında şunu çalıştır, çıkan MP3'leri sunucudaki <code>Content/audio</code> klasörüne kopyala:</p>
+        <pre class="bg-body-tertiary p-2 rounded mb-0" style="white-space:pre-wrap"><code>cd tools/audiogen
+python generate_audio.py --manifest-url audio-manifest.json</code></pre>
+    </div>
+</div>
+
+<div class="modal fade" id="scModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="scModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body" id="scModalBody"></div>
+    <div class="modal-footer" id="scModalFooter"></div>
+</div></div></div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc, fmt, posNames } = App;
+            const statusBadge = { Draft: '<span class="badge bg-warning-subtle text-warning">Taslak</span>', Published: '<span class="badge bg-success-subtle text-success">Yayında</span>', Archived: '<span class="badge bg-secondary-subtle text-secondary">Arşiv</span>' };
+            const modal = new bootstrap.Modal('#scModal');
+
+            try {
+                const cats = await api.get('admin/content/categories');
+                $('#gCategory').html(cats.map(c => `<option value="${c.id}">${esc(c.nameTr)}</option>`).join(''));
+            } catch (e) { App.showError(e); }
+            loadStats(); loadList();
+
+            async function loadStats() {
+                try {
+                    const s = await api.get('admin/content/words/stats');
+                    $('#psTotal').text(fmt.number(s.totalShared)); $('#psPool').text(fmt.number(s.generalPool));
+                    $('#psEnrich').text(fmt.number(s.needsEnrichment)); $('#psAudio').text(fmt.number(s.missingAudio));
+                    return s;
+                } catch (e) { App.showError(e); }
+            }
+
+            async function loadList() {
+                try {
+                    const list = await api.get('admin/content/scenarios');
+                    $('#scList').html(list.length ? list.map(s => `
+                        <tr>
+                            <td><a href="#" class="open fw-semibold text-decoration-none" data-id="${s.id}">${esc(s.titleTr)}</a>
+                                <div class="small text-body-secondary" lang="en">${esc(s.titleEn)}${s.isAiGenerated ? ' · <i class="bi bi-magic" title="AI üretti"></i>' : ''}</div></td>
+                            <td class="small">${esc(s.categoryName)}</td>
+                            <td><span class="level-badge">${esc(s.level)}</span></td>
+                            <td class="text-center small">${s.wordCount} / ${s.lineCount}</td>
+                            <td class="text-center small">${s.missingAudio ? `<span class="text-danger">${s.missingAudio} eksik</span>` : '<i class="bi bi-check2 text-success"></i>'}</td>
+                            <td>${statusBadge[s.status] || esc(s.status)}</td>
+                            <td class="text-end"><button class="btn btn-sm btn-outline-secondary open" data-id="${s.id}">Aç</button></td>
+                        </tr>`).join('') : '<tr><td colspan="7" class="text-center text-body-secondary py-4">Senaryo yok.</td></tr>');
+                } catch (e) { App.showError(e); }
+            }
+
+            async function openScenario(id) {
+                let s;
+                try { s = await api.get('admin/content/scenarios/' + id); } catch (e) { return App.showError(e); }
+                $('#scModalTitle').html(`${esc(s.titleTr)} ${statusBadge[s.status] || ''}`);
+                $('#scModalBody').html(`
+                    <p class="small text-body-secondary mb-2">${esc(s.descriptionTr || '')}</p>
+                    <h6 class="fw-bold">Diyalog</h6>
+                    <div class="mb-3">${s.lines.map(l => `<div class="mb-2"><b>${esc(l.speakerRole || '')}:</b> <span lang="en">${esc(l.textEn)}</span>
+                        <button class="btn btn-sm btn-icon say" data-text="${esc(l.textEn)}"><i class="bi bi-volume-up"></i></button>
+                        <div class="small text-body-secondary">${esc(l.textTr)}</div></div>`).join('')}</div>
+                    <h6 class="fw-bold">Kelimeler (${s.words.length})</h6>
+                    <div class="small">${s.words.map(w => `<div><b lang="en">${esc(w.lemma)}</b> <span class="text-body-secondary">${esc(posNames[w.partOfSpeech] || w.partOfSpeech)} · ${esc(w.level)}${w.ipa ? ' · ' + esc(w.ipa) : ''}</span> — ${esc(w.meaningTr)}</div>`).join('')}</div>`);
+                $('#scModalFooter').html(`
+                    ${s.status !== 'Published' && !s.publishedAt ? '<button class="btn btn-outline-danger me-auto" id="mDel"><i class="bi bi-trash me-1"></i>Sil</button>' : ''}
+                    ${s.status === 'Published' ? '<button class="btn btn-outline-secondary" id="mArchive"><i class="bi bi-archive me-1"></i>Arşivle</button>' : ''}
+                    ${s.status !== 'Published' ? '<button class="btn btn-success" id="mPublish"><i class="bi bi-check2-circle me-1"></i>Yayınla</button>' : ''}`);
+                $('#scModalBody').off('click').on('click', '.say', function () { App.audio.speakAi($(this).data('text')); });
+                $('#scModalFooter').off('click')
+                    .on('click', '#mPublish', () => act(`admin/content/scenarios/${id}/publish`, 'post', 'Yayınlandı'))
+                    .on('click', '#mArchive', () => act(`admin/content/scenarios/${id}/archive`, 'post', 'Arşivlendi'))
+                    .on('click', '#mDel', async () => {
+                        if (!await App.confirm('Senaryo silinsin mi?', 'Bu işlem geri alınamaz.', 'Sil')) return;
+                        act(`admin/content/scenarios/${id}`, 'del', 'Silindi');
+                    });
+                modal.show();
+            }
+
+            async function act(url, method, msg) {
+                try { await api[method](url); App.toast(msg); modal.hide(); loadList(); loadStats(); } catch (e) { App.showError(e); }
+            }
+
+            $('#scList').on('click', '.open', function (e) { e.preventDefault(); openScenario($(this).data('id')); });
+
+            $('#genForm').on('submit', async function (e) {
+                e.preventDefault();
+                const topic = $('#gTopic').val().trim();
+                if (!topic) return App.toast('Konu yaz', 'info');
+                App.busy('#genBtn', true, 'Üretiliyor (20-40 sn)');
+                try {
+                    const id = await api.post('admin/content/scenarios/generate', {
+                        categoryId: parseInt($('#gCategory').val(), 10), level: $('#gLevel').val(), topic, notes: $('#gNotes').val().trim() || null
+                    });
+                    App.toast('Taslak hazır, kontrol et');
+                    $('#gTopic, #gNotes').val('');
+                    await loadList(); loadStats();
+                    openScenario(id);
+                } catch (err) { App.showError(err); }
+                App.busy('#genBtn', false);
+            });
+
+            $('#manifestBtn').on('click', async function () {
+                App.busy(this, true, '');
+                try {
+                    const list = await api.get('admin/content/audio-manifest', { onlyMissing: true });
+                    if (!list.length) App.toast('Eksik ses yok 🎉', 'info');
+                    else {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(new Blob([JSON.stringify(list, null, 1)], { type: 'application/json' }));
+                        a.download = 'audio-manifest.json'; a.click();
+                        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+                        App.toast(`${list.length} ses listelendi`);
+                    }
+                } catch (e) { App.showError(e); }
+                App.busy(this, false);
+            });
+
+            $('#refreshStats').on('click', loadStats);
+
+            $('#importBtn').on('click', async function () {
+                const text = $('#wImport').val().trim();
+                if (!text) return App.toast('Önce kelimeleri yapıştır', 'info');
+                App.busy(this, true, 'Alınıyor');
+                try {
+                    const r = await api.post('admin/content/words/import', { text });
+                    App.toast(`${r.added} kelime eklendi, ${r.skipped} atlandı`);
+                    $('#wImport').val(''); loadStats();
+                } catch (e) { App.showError(e); }
+                App.busy(this, false);
+            });
+
+            // Anlam doldurma: küçük partiler hâlinde, sayfa açık kaldıkça devam eder
+            let enriching = false;
+            $('#enrichBtn').on('click', async function () {
+                if (enriching) { enriching = false; return; }
+                const s = await loadStats();
+                if (!s?.needsEnrichment) return App.toast('Anlamı boş kelime yok', 'info');
+                enriching = true;
+                const total = s.needsEnrichment;
+                $(this).html('<i class="bi bi-stop-circle me-1"></i>Durdur').removeClass('btn-primary').addClass('btn-outline-danger');
+                $('#enrichProgress').removeClass('d-none');
+                let failed = 0;
+                while (enriching) {
+                    try {
+                        const r = await api.post('admin/content/words/enrich?batches=2');
+                        failed += r.failed;
+                        const done = total - r.remaining;
+                        $('#enrichProgress .progress-bar').css('width', Math.round(100 * done / total) + '%');
+                        $('#enrichText').text(`${fmt.number(done)} / ${fmt.number(total)} kelime dolduruldu${failed ? ` · ${failed} hata` : ''}`);
+                        if (!r.remaining || !r.processed) break;
+                    } catch (e) { App.showError(e); break; }
+                }
+                enriching = false;
+                $(this).html('<i class="bi bi-stars me-1"></i>Anlamları AI ile doldur').removeClass('btn-outline-danger').addClass('btn-primary');
+                loadStats();
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,135 @@
+@{
+    ViewData["Title"] = "Cümle Yakala";
+}
+<div style="max-width:860px" class="mx-auto">
+    <div class="mb-3"><a href="/Practice" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>AI Pratik</a></div>
+    <h1 class="h3 page-title">Cümle yakala</h1>
+    <p class="page-subtitle">Dizide, YouTube'da, şarkıda ya da yolda duyduğun bir cümleyi yapıştır. AI açıklasın, beğendiğin kelimeleri tek tıkla kartlarına ekle.</p>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <textarea class="form-control mb-2" id="capText" rows="3" maxlength="400" lang="en" spellcheck="false"
+                      placeholder="Örn: I'm gonna grab a bite before the meeting, wanna come?"></textarea>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <input class="form-control form-control-sm" id="capSource" maxlength="200" style="max-width:320px" placeholder="Nerede duydun? (isteğe bağlı, ör. Friends S1E3)" />
+                <button class="btn btn-primary ms-auto" id="analyzeBtn"><i class="bi bi-magic me-1"></i>Açıkla</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="analysis" class="mb-4"></div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-collection me-2"></i>Yakaladığım cümleler</span>
+            <span class="small text-body-secondary" id="capCount"></span>
+        </div>
+        <div class="list-group list-group-flush" id="capList"><div class="p-3"><div class="skeleton" style="height:60px"></div></div></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const { api, esc, fmt } = App;
+            const posNames = App.posNames;
+            let current = null;
+
+            async function loadList() {
+                try {
+                    const list = await api.get('capture');
+                    $('#capCount').text(list.length ? list.length + ' cümle' : '');
+                    $('#capList').html(list.length ? list.map(s => `
+                        <div class="list-group-item py-3" data-shadow-scope>
+                            <div class="d-flex gap-2 align-items-start">
+                                <button class="btn btn-sm btn-icon say" data-text="${esc(s.textEn)}" title="Dinle"><i class="bi bi-volume-up"></i></button>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-semibold" lang="en">${esc(s.textEn)}</div>
+                                    <div class="small text-body-secondary">${esc(s.textTr)}</div>
+                                    <div class="small mt-1">${s.words.map(w => `<span class="badge bg-primary-soft text-primary me-1" lang="en">${esc(w)}</span>`).join('')}
+                                        <span class="text-body-secondary">${s.sourceNote ? '· ' + esc(s.sourceNote) + ' ' : ''}· ${fmt.date(s.createdAt)}</span></div>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    ${App.shadow.button(s.textEn, '')}
+                                    <button class="btn btn-sm btn-icon text-danger del" data-id="${s.sentenceId}" title="Sil"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>`).join('') : '<div class="empty-state py-4"><i class="bi bi-collection"></i>Henüz cümle yakalamadın.</div>');
+                } catch (e) { App.showError(e); }
+            }
+
+            $('#analyzeBtn').on('click', async function () {
+                const text = $('#capText').val().trim();
+                if (text.length < 2) return App.toast('Önce bir cümle yapıştır', 'info');
+                App.busy(this, true, 'AI inceliyor');
+                try {
+                    current = await api.post('capture/analyze', { text });
+                    renderAnalysis();
+                } catch (e) { App.showError(e); }
+                App.busy(this, false);
+            });
+
+            function renderAnalysis() {
+                const a = current;
+                const text = a.correctedText || a.text;
+                $('#analysis').html(`
+                    <div class="card" data-shadow-scope>
+                        <div class="card-body">
+                            ${!a.isEnglish ? '<div class="alert alert-warning py-2 small">Bu cümle İngilizce görünmüyor.</div>' : ''}
+                            ${a.correctedText ? `<div class="small text-body-secondary mb-1">Düzeltilmiş hali:</div>` : ''}
+                            <div class="d-flex gap-2 align-items-start mb-2">
+                                <button class="btn btn-sm btn-icon say" data-text="${esc(text)}"><i class="bi bi-volume-up"></i></button>
+                                <div class="fs-5 fw-semibold flex-grow-1" lang="en">${esc(text)}</div>
+                                <span class="level-badge">${esc(a.level)}</span>
+                            </div>
+                            <div class="mb-2"><b>Türkçesi:</b> ${esc(a.translationTr)}</div>
+                            <div class="alert alert-light border small"><i class="bi bi-lightbulb text-warning me-1"></i>${esc(a.explanationTr)}</div>
+                            ${App.shadow.button(text, 'Sesli tekrar et')}
+                            <h6 class="fw-bold mt-3">Öğrenilecek kelime ve kalıplar <span class="small text-body-secondary fw-normal">(kartlarına eklemek istediklerini seç)</span></h6>
+                            <div class="list-group mb-3">
+                                ${a.items.map((it, i) => `
+                                    <label class="list-group-item d-flex gap-3 align-items-start">
+                                        <input class="form-check-input mt-1 item-check" type="checkbox" data-i="${i}" checked />
+                                        <div class="flex-grow-1">
+                                            <div><b lang="en">${esc(it.lemma)}</b> <span class="small text-body-secondary">${esc(it.ipa || '')} · ${esc(posNames[it.pos] || it.pos)}</span></div>
+                                            <div class="small">${esc(it.meaningTr)}</div>
+                                            ${it.noteTr ? `<div class="small text-body-secondary">${esc(it.noteTr)}</div>` : ''}
+                                        </div>
+                                    </label>`).join('') || '<div class="small text-body-secondary">Özel bir kelime çıkmadı; cümleyi yine de kaydedebilirsin.</div>'}
+                            </div>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button class="btn btn-light" id="cancelBtn">Vazgeç</button>
+                                <button class="btn btn-primary" id="saveBtn"><i class="bi bi-plus-lg me-1"></i>Kartlarıma ekle</button>
+                            </div>
+                        </div>
+                    </div>`);
+            }
+
+            $('#analysis').on('click', '#cancelBtn', () => { current = null; $('#analysis').empty(); });
+            $('#analysis').on('click', '#saveBtn', async function () {
+                const items = current.items.filter((_, i) => $(`.item-check[data-i="${i}"]`).is(':checked'));
+                App.busy(this, true, 'Ekleniyor');
+                try {
+                    const r = await api.post('capture', {
+                        text: current.correctedText || current.text, translationTr: current.translationTr,
+                        sourceNote: $('#capSource').val().trim() || null, level: current.level, items
+                    });
+                    App.toast(`Eklendi: ${r.newWordCards} kelime kartı + 1 cümle kartı. Çalış ekranında seni bekliyor.`);
+                    current = null; $('#analysis').empty(); $('#capText').val('');
+                    loadList();
+                } catch (e) { App.showError(e); App.busy(this, false); }
+            });
+
+            $(document).on('click', '.say', function () { App.audio.speakAi($(this).data('text')); });
+            $('#capList').on('click', '.del', async function () {
+                if (!await App.confirm('Cümle silinsin mi?', 'Cümlenin kartı da silinir (kelime kartların kalır).', 'Sil')) return;
+                try { await api.del('capture/' + $(this).data('id')); App.toast('Silindi'); loadList(); } catch (e) { App.showError(e); }
+            });
+
+            loadList();
+            // YouTube sahnesinden gelen cümle: /Practice/Capture?text=...&source=...
+            const qs = new URLSearchParams(location.search);
+            if (qs.get('text')) { $('#capText').val(qs.get('text').slice(0, 400)); $('#capSource').val((qs.get('source') || '').slice(0, 200)); $('#analyzeBtn').trigger('click'); }
+        })();
+    </script>
+}

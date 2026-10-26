@@ -1,0 +1,102 @@
+@model string?
+@{
+    ViewData["Title"] = "Kelimelerim";
+}
+<h1 class="h3 page-title">Kelimelerim</h1>
+<p class="page-subtitle">Hangi kelimeleri öğrendin, hangilerinde zorlanıyorsun? Hepsi burada.</p>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row gap-2 justify-content-between mb-3">
+            <ul class="nav nav-pills flex-nowrap overflow-auto" id="filterTabs">
+                <li class="nav-item"><button class="nav-link text-nowrap" data-filter="All">Tümü</button></li>
+                <li class="nav-item"><button class="nav-link text-nowrap" data-filter="Learning">Öğreniyorum</button></li>
+                <li class="nav-item"><button class="nav-link text-nowrap" data-filter="Learned">Öğrendim</button></li>
+                <li class="nav-item"><button class="nav-link text-nowrap" data-filter="Struggling">Zorlandıklarım</button></li>
+                <li class="nav-item"><button class="nav-link text-nowrap" data-filter="Known">Biliyorum</button></li>
+            </ul>
+            <div class="input-group" style="max-width:280px">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" id="search" placeholder="Kelime veya anlam ara" maxlength="100" />
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Kelime</th>
+                        <th class="d-none d-md-table-cell">Seviye</th>
+                        <th>Durum</th>
+                        <th class="d-none d-sm-table-cell">Hatırlama</th>
+                        <th class="d-none d-lg-table-cell">Tekrar / Unutma</th>
+                        <th class="d-none d-md-table-cell">Sıradaki tekrar</th>
+                    </tr>
+                </thead>
+                <tbody id="wordRows"></tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-body-secondary" id="pageInfo"></span>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" id="prevPage"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" id="nextPage"><i class="bi bi-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const { api, esc, fmt, tts } = App;
+            const valid = ['All', 'Learning', 'Learned', 'Struggling', 'Known'];
+            const initial = @Json.Serialize(Model);
+            let filter = valid.includes(initial) ? initial : 'All';
+            let page = 1, total = 0, search = '';
+            const pageSize = 50;
+            const statusCls = { 'Öğrendim': 'success', 'Öğreniyorum': 'primary', 'Zorlanıyorum': 'danger', 'Biliyorum': 'warning' };
+
+            async function load() {
+                $('#filterTabs .nav-link').removeClass('active').filter(`[data-filter="${filter}"]`).addClass('active');
+                $('#wordRows').html('<tr><td colspan="6"><div class="skeleton" style="height:120px"></div></td></tr>');
+                try {
+                    const r = await api.get('stats/words', { filter, search: search || undefined, page, pageSize });
+                    total = r.totalCount;
+                    $('#wordRows').html(r.items.length ? r.items.map(w => `
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-icon say" data-text="${esc(w.lemma)}" data-url="${esc(w.audioUrl || '')}" data-url-uk="${esc(w.audioUrlUk || '')}" style="width:30px;height:30px"><i class="bi bi-volume-up"></i></button>
+                                    <div><div class="fw-semibold">${esc(w.lemma)}</div><div class="small text-body-secondary">${esc(w.meaningTr)}</div></div>
+                                </div>
+                            </td>
+                            <td class="d-none d-md-table-cell"><span class="level-badge">${esc(w.level)}</span></td>
+                            <td><span class="badge bg-${statusCls[w.status] || 'secondary'}-subtle text-${statusCls[w.status] || 'secondary'}">${esc(w.status)}</span></td>
+                            <td class="d-none d-sm-table-cell" style="min-width:110px">
+                                ${w.retentionPercent != null ? `<div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1" style="height:6px"><div class="progress-bar" style="width:${w.retentionPercent}%"></div></div><span class="small">%${w.retentionPercent}</span></div>` : '-'}
+                            </td>
+                            <td class="d-none d-lg-table-cell small">${w.reps} / <span class="${w.lapses > 2 ? 'text-danger fw-semibold' : ''}">${w.lapses}</span></td>
+                            <td class="d-none d-md-table-cell small text-body-secondary">${w.nextDueAt ? fmt.relative(w.nextDueAt) : '-'}</td>
+                        </tr>`).join('')
+                        : `<tr><td colspan="6"><div class="empty-state"><i class="bi bi-journal"></i>Bu listede henüz kelime yok.</div></td></tr>`);
+                    const from = total ? (page - 1) * pageSize + 1 : 0;
+                    $('#pageInfo').text(`${from}-${Math.min(page * pageSize, total)} / ${total}`);
+                    $('#prevPage').prop('disabled', page <= 1);
+                    $('#nextPage').prop('disabled', page * pageSize >= total);
+                } catch (e) { App.showError(e); }
+            }
+
+            $('#filterTabs').on('click', '[data-filter]', function () {
+                filter = $(this).data('filter'); page = 1;
+                history.replaceState(null, '', '/Words?filter=' + filter);
+                load();
+            });
+            let t; $('#search').on('input', function () { clearTimeout(t); t = setTimeout(() => { search = this.value.trim(); page = 1; load(); }, 350); });
+            $('#prevPage').on('click', () => { page--; load(); });
+            $('#nextPage').on('click', () => { page++; load(); });
+            $('#wordRows').on('click', '.say', function () { App.audio.speak({ url: $(this).data('url'), urlUk: $(this).data('url-uk'), text: $(this).data('text') }); });
+            load();
+        })();
+    </script>
+}

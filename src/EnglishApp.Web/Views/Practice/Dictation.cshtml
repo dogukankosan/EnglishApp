@@ -1,0 +1,147 @@
+@{
+    ViewData["Title"] = "Dikte";
+}
+<div style="max-width:760px" class="mx-auto" id="dictApp" data-scenario-id="@(ViewBag.ScenarioId)">
+    <div class="mb-3"><a href="/Practice" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>AI Pratik</a></div>
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h1 class="h3 page-title">Dikte</h1>
+            <p class="page-subtitle mb-0">Cümleyi dinle, duyduğunu yaz. Kulağın bağlı konuşmaya ("gonna", "wanna") böyle alışır.</p>
+        </div>
+        <div id="audioPrefs"></div>
+    </div>
+
+    <div class="row g-2 mb-3" id="dictStats">
+        <div class="col-4"><div class="card stat-card text-center"><div class="stat-value" id="stAttempts">-</div><div class="stat-label">30 günde deneme</div></div></div>
+        <div class="col-4"><div class="card stat-card text-center"><div class="stat-value" id="stAvg">-</div><div class="stat-label">Ortalama</div></div></div>
+        <div class="col-4"><div class="card stat-card text-center"><div class="stat-value" id="stWeak">-</div><div class="stat-label">Zayıf cümle</div></div></div>
+    </div>
+
+    <div class="card" id="dictCard">
+        <div class="card-body p-4">
+            <div class="study-top"><div class="progress"><div class="progress-bar" id="dictProgress" style="width:0%"></div></div><span class="small text-body-secondary" id="dictCounter"></span></div>
+            <div id="dictBody"><div class="skeleton" style="height:180px"></div></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc } = App;
+            const scenarioId = $('#dictApp').data('scenario-id') || null;
+            App.audio.prefsControl('#audioPrefs');
+
+            let items = [], idx = 0, scores = [];
+
+            async function loadStats() {
+                try {
+                    const s = await api.get('dictation/stats');
+                    $('#stAttempts').text(s.attempts30d);
+                    $('#stAvg').text(s.average30d == null ? '-' : '%' + s.average30d);
+                    $('#stWeak').text(s.weakSentences);
+                } catch { }
+            }
+
+            async function start() {
+                $('#dictBody').html('<div class="skeleton" style="height:180px"></div>');
+                try { items = await api.get('dictation/next', scenarioId ? { scenarioId, count: 10 } : { count: 10 }); }
+                catch (e) { return App.showError(e); }
+                idx = 0; scores = [];
+                if (!items.length) return $('#dictBody').html('<div class="empty-state py-4"><i class="bi bi-ear"></i>Dikte için cümle yok. Önce birkaç senaryoya başla.</div>');
+                show();
+            }
+
+            function play(rate) {
+                const it = items[idx];
+                App.audio.speak({ item: it, text: it.textEn, rate });
+            }
+
+            function show() {
+                const it = items[idx];
+                $('#dictProgress').css('width', (100 * idx / items.length) + '%');
+                $('#dictCounter').text(`${idx + 1} / ${items.length}`);
+                $('#dictBody').html(`
+                    <div class="text-center mb-3">
+                        <button class="speak-btn speak-lg" id="playBtn" title="Dinle (Ctrl+Boşluk)"><i class="bi bi-volume-up"></i></button>
+                        <div class="mt-2 d-flex justify-content-center gap-2">
+                            <button class="btn btn-sm btn-outline-secondary" id="slowBtn"><i class="bi bi-speedometer me-1"></i>Yavaş dinle</button>
+                        </div>
+                        <div class="small text-body-secondary mt-2">${it.wordCount} kelime${it.speakerRole ? ' · ' + esc(it.speakerRole) : ''}${it.lastScore != null ? ` · son puanın %${it.lastScore}` : ''} · ${esc(it.source)}</div>
+                    </div>
+                    <textarea class="form-control form-control-lg mb-2" id="typed" rows="2" lang="en" spellcheck="false" autocomplete="off" placeholder="Duyduğunu yaz…"></textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="kbd-hint"><kbd>Enter</kbd> kontrol · <kbd>Ctrl</kbd>+<kbd>Boşluk</kbd> tekrar dinle</span>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary" id="skipBtn">Bilmiyorum</button>
+                            <button class="btn btn-primary" id="checkBtn"><i class="bi bi-check2 me-1"></i>Kontrol et</button>
+                        </div>
+                    </div>
+                    <div id="result" class="mt-3"></div>`);
+                $('#typed').trigger('focus');
+                setTimeout(() => play(), 250);
+            }
+
+            async function check(typed) {
+                const it = items[idx];
+                App.busy('#checkBtn', true, 'Kontrol');
+                let r;
+                try { r = await api.post('dictation/check', { sentenceId: it.sentenceId, typed }); }
+                catch (e) { App.busy('#checkBtn', false); return App.showError(e); }
+                scores.push(r.scorePercent);
+                const color = r.scorePercent >= 90 ? 'success' : r.scorePercent >= 60 ? 'warning' : 'danger';
+                $('#typed').prop('disabled', true);
+                $('#checkBtn, #skipBtn').remove();
+                $('#result').html(`
+                    <div class="alert alert-${color} border-0 d-flex justify-content-between align-items-center" style="border-radius:12px">
+                        <b>%${r.scorePercent}</b><span>${r.scorePercent >= 90 ? 'Harika kulak! 🎉' : r.scorePercent >= 60 ? 'İyi, eksikleri bir daha dinle' : 'Zor bir cümle, yavaş dinleyip tekrar dene'}</span>
+                    </div>
+                    <div class="dict-tokens mb-2" lang="en">${r.tokens.map(t => `<span class="dict-token ${t.status}" title="${t.typed ? 'Yazdığın: ' + esc(t.typed) : ''}">${esc(t.word)}</span>`).join(' ')}</div>
+                    ${r.extraWords.length ? `<div class="small text-body-secondary mb-2">Fazla yazdıkların: <s>${esc(r.extraWords.join(' '))}</s></div>` : ''}
+                    <div class="small mb-2"><i class="bi bi-translate me-1"></i>${esc(r.translationTr)}</div>
+                    <div class="small text-body-secondary mb-2"><span class="dict-token ok">doğru</span> <span class="dict-token typo">küçük hata</span> <span class="dict-token missed">kaçırdın</span></div>
+                    ${r.tips.length ? `<div class="card bg-primary-soft border-0 mb-2"><div class="card-body py-2">
+                        <div class="fw-semibold small mb-1"><i class="bi bi-lightbulb me-1"></i>Konuşmada böyle duyulur</div>
+                        ${r.tips.map(t => `<div class="small"><b lang="en">${esc(t.written)}</b> → <i lang="en">"${esc(t.sounds)}"</i> — ${esc(t.explanationTr)}</div>`).join('')}
+                    </div></div>` : ''}
+                    <div class="d-flex flex-wrap gap-2 justify-content-end">
+                        <button class="btn btn-outline-secondary" id="replayBtn"><i class="bi bi-arrow-repeat me-1"></i>Tekrar dinle</button>
+                        ${App.shadow.button(r.correctText, 'Sesli tekrar et')}
+                        <button class="btn btn-primary" id="nextBtn">${idx + 1 < items.length ? 'Sonraki <i class="bi bi-arrow-right ms-1"></i>' : 'Bitir'}</button>
+                    </div>`);
+                $('#nextBtn').trigger('focus');
+                loadStats();
+            }
+
+            function finish() {
+                const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+                $('#dictProgress').css('width', '100%');
+                $('#dictBody').html(`
+                    <div class="text-center py-3">
+                        <div class="display-6 fw-bold mb-1">%${avg}</div>
+                        <div class="text-body-secondary mb-3">${scores.length} cümle tamamlandı. Puanı 80'in altındaki cümleler bir sonraki sette tekrar gelir.</div>
+                        <button class="btn btn-primary" id="againBtn"><i class="bi bi-arrow-repeat me-1"></i>Yeni set</button>
+                    </div>`);
+            }
+
+            $('#dictBody')
+                .on('click', '#playBtn, #replayBtn', () => play())
+                .on('click', '#slowBtn', () => play(0.75))
+                .on('click', '#checkBtn', () => {
+                    const t = $('#typed').val().trim();
+                    if (!t) return App.toast('Önce duyduğunu yaz (bilmiyorsan "Bilmiyorum")', 'info');
+                    check(t);
+                })
+                .on('click', '#skipBtn', () => check(''))
+                .on('click', '#nextBtn', () => { idx++; idx < items.length ? show() : finish(); })
+                .on('click', '#againBtn', start)
+                .on('keydown', '#typed', e => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#checkBtn').trigger('click'); }
+                });
+            $(document).on('keydown', e => { if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); play(); } });
+
+            loadStats();
+            start();
+        })();
+    </script>
+}

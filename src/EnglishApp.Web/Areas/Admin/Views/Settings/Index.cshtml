@@ -1,0 +1,214 @@
+@{
+    ViewData["Title"] = "Ayarlar";
+}
+<h1 class="h3 page-title">Sistem ayarları</h1>
+<p class="page-subtitle">Kilit simgeli alanlar veritabanında şifreli saklanır ve hiçbir zaman ekrana geri gelmez. Değiştirmek istemiyorsan boş bırak.</p>
+
+<div class="alert alert-info border-0 small" style="border-radius:14px">
+    <i class="bi bi-envelope-check me-1"></i>
+    <b>E-posta ayarlarını</b> değiştirdiğinde kaydetmeden önce yeni ayarlarla <b>test maili gönderilir</b>.
+    Test maili başarılı olmazsa hiçbir ayar kaydedilmez.
+</div>
+
+<form id="settingsForm">
+    <div id="groups"><div class="skeleton" style="height:300px"></div></div>
+    <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
+        <button type="button" class="btn btn-outline-primary" id="testAiBtn"><i class="bi bi-cpu me-1"></i>Yapay zekayı test et</button>
+        <button type="button" class="btn btn-outline-primary" id="testMailBtn"><i class="bi bi-envelope-check me-1"></i>Kayıtlı ayarla test maili</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">Kaydet</button>
+    </div>
+</form>
+
+<div class="card mt-4">
+    <div class="card-header"><i class="bi bi-clock-history me-2"></i>Hatırlatma ve rapor mailleri nasıl çalışır?</div>
+    <div class="card-body small">
+        <p class="mb-2">Dış bir zamanlayıcı servisi (ör. <b>cron-job.org</b>, ücretsiz) her 15 dakikada bir API'yi çağırmalı:</p>
+        <pre class="log-pre mb-2">POST {API adresi}/api/v1/jobs/run
+Header: X-Job-Key: {Jobs.SecretKey ayarındaki değer}</pre>
+        <p class="mb-0 text-body-secondary">Sunucu uykuya geçse bile hatırlatmalar zamanında gider. Gece 03:00'ten sonraki ilk çağrıda eski loglar da temizlenir.</p>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header"><i class="bi bi-shield-check me-2"></i>Giriş güvenlik doğrulaması (Cloudflare Turnstile) nasıl açılır?</div>
+    <div class="card-body small">
+        <p class="mb-2">Aynı IP'den ya da aynı e-postaya <b>3 hatalı giriş</b> denemesinden sonra giriş ekranında "insan mısın" doğrulaması çıkar. Ücretsizdir, sınırsız kullanılır.</p>
+        <ol class="mb-2">
+            <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a> adresinde ücretsiz hesap aç (alan adını Cloudflare'e taşıman gerekmez).</li>
+            <li>Sol menüden <b>Turnstile</b> → <b>Add widget</b>: isim ver, <b>Hostname</b> olarak sitenin alan adını ekle (lokal test için <code>localhost</code>), mod: <b>Managed</b>.</li>
+            <li>Çıkan <b>Site Key</b> ve <b>Secret Key</b> değerlerini yukarıdaki Güvenlik alanlarına yapıştırıp kaydet.</li>
+        </ol>
+        <p class="mb-0 text-body-secondary">İki alan boşsa doğrulama kapalıdır (hesap kilitleme ve istek sınırı yine çalışır). Cloudflare'e ulaşılamazsa doğrulama geçmez; güvenli tarafta kalınır.</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const { api, esc, fmt } = App;
+            const groupNames = { Llm: '🤖 Yapay zeka (LLM)', Smtp: '✉️ E-posta (SMTP)', Jobs: '⏰ Zamanlanmış işler', General: '⚙️ Genel', Security: '🛡️ Güvenlik (giriş doğrulaması)' };
+            const order = ['General', 'Security', 'Smtp', 'Jobs', 'Llm'];
+            const htmlKeys = ['Smtp.SignatureHtml'];
+            let settings = [];
+
+            async function load() {
+                try { settings = await api.get('admin/settings'); } catch (e) { App.showError(e); return; }
+                const groups = order.filter(g => settings.some(s => s.groupName === g))
+                    .concat([...new Set(settings.map(s => s.groupName))].filter(g => !order.includes(g)));
+                $('#groups').html(groups.map(g => `
+                    <div class="card mb-3">
+                        <div class="card-header">${esc(groupNames[g] || g)}</div>
+                        <div class="card-body row g-3">
+                            ${settings.filter(s => s.groupName === g).map(field).join('')}
+                        </div>
+                    </div>`).join(''));
+                settings.filter(s => /UseSsl$/.test(s.key)).forEach(s => $(`[data-key="${s.key}"]`).val(s.value === 'false' ? 'false' : 'true'));
+                htmlKeys.forEach(k => preview(k));
+            }
+
+            function field(s) {
+                const id = 'f_' + s.key.replace(/\W/g, '_');
+                const label = `
+                    <label class="form-label small fw-semibold" for="${id}">
+                        ${s.isEncrypted ? '<i class="bi bi-lock-fill text-warning me-1" title="Şifreli saklanır"></i>' : ''}${esc(s.descriptionTr || s.key)}
+                    </label>`;
+                const help = `<div class="form-text"><code>${esc(s.key)}</code>${s.updatedAt ? ' · ' + fmt.dateTime(s.updatedAt) : ''}</div>`;
+
+                if (htmlKeys.includes(s.key)) {
+                    return `
+                        <div class="col-12">
+                            ${label}
+                            <div class="row g-2">
+                                <div class="col-lg-6">
+                                    <textarea class="form-control font-monospace small" id="${id}" data-key="${esc(s.key)}" rows="7" maxlength="8000"
+                                              spellcheck="false">${esc(s.value ?? '')}</textarea>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="small text-body-secondary mb-1">Önizleme</div>
+                                    <iframe class="w-100 border rounded bg-white" style="height:150px" sandbox="" data-preview="${esc(s.key)}"></iframe>
+                                </div>
+                            </div>
+                            ${help}
+                        </div>`;
+                }
+
+                const input = /UseSsl$/.test(s.key)
+                    ? `<select class="form-select" id="${id}" data-key="${esc(s.key)}"><option value="true">Evet</option><option value="false">Hayır</option></select>`
+                    : `<input class="form-control" id="${id}" data-key="${esc(s.key)}" data-enc="${s.isEncrypted}"
+                              type="${s.isEncrypted ? 'password' : 'text'}" autocomplete="new-password" maxlength="4000"
+                              placeholder="${s.isEncrypted ? (s.hasValue ? '•••••••• (kayıtlı, değiştirmek için yaz)' : 'Girilmemiş') : ''}"
+                              value="${s.isEncrypted ? '' : esc(s.value ?? '')}" />`;
+                return `<div class="col-md-6">${label}${input}${help}</div>`;
+            }
+
+            // İmza önizlemesi: sandbox'lı iframe (script çalışmaz)
+            function preview(key) {
+                const html = $(`[data-key="${key}"]`).val() || '<span style="color:#999">İmza boş</span>';
+                const frame = document.querySelector(`[data-preview="${key}"]`);
+                if (frame) frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:10px;border-top:1px solid #e5e7eb">${html}</div>`;
+            }
+            $('#groups').on('input', 'textarea[data-key]', function () { preview($(this).data('key')); });
+
+            function changedItems() {
+                const items = [];
+                $('[data-key]').each(function () {
+                    const key = $(this).data('key');
+                    const s = settings.find(x => x.key === key);
+                    const val = $(this).val();
+                    if (s.isEncrypted) { if (val) items.push({ key, value: val }); }   // boş = değiştirme
+                    else if ((s.value ?? '') !== val) items.push({ key, value: val === '' ? null : val });
+                });
+                return items;
+            }
+
+            $('#settingsForm').on('submit', async function (e) {
+                e.preventDefault();
+                const items = changedItems();
+                if (!items.length) return App.toast('Değişiklik yok', 'info');
+
+                // SMTP değiştiyse test adresi sor (boş = kendi adresin)
+                let testMailTo = null;
+                if (items.some(i => i.key.startsWith('Smtp.'))) {
+                    const r = await Swal.fire({
+                        icon: 'info', title: 'Önce test maili gönderilecek',
+                        html: 'E-posta ayarları değişti. Yeni ayarlarla test maili başarılı olursa kaydedilecek.<br><br>Test maili nereye gitsin? <small class="text-body-secondary">(boş bırakırsan kendi adresine)</small>',
+                        input: 'email', inputPlaceholder: 'ornek@mail.com', showCancelButton: true,
+                        confirmButtonText: 'Test et ve kaydet', cancelButtonText: 'Vazgeç', confirmButtonColor: '#4f46e5',
+                        inputValidator: v => v && !/^[^@@\s]+@@[^@@\s]+\.[^@@\s]+$/.test(v) ? 'Geçerli bir e-posta gir' : undefined,
+                        validationMessage: 'Geçerli bir e-posta gir'
+                    });
+                    if (!r.isConfirmed) return;
+                    testMailTo = r.value || null;
+                }
+
+                App.busy('#saveBtn', true, testMailTo !== null || items.some(i => i.key.startsWith('Smtp.')) ? 'Test maili gönderiliyor' : 'Kaydediliyor');
+                try {
+                    const res = await api.put('admin/settings', { items, testMailTo });
+                    if (res.testMailSent) {
+                        await Swal.fire({ icon: 'success', title: 'Kaydedildi',
+                            text: `Test maili ${res.testMailTo} adresine gönderildi ve ${res.savedCount} ayar kaydedildi. Gelen kutunu (ve spam klasörünü) kontrol et.`,
+                            confirmButtonColor: '#4f46e5' });
+                    } else {
+                        App.toast(`${res.savedCount} ayar kaydedildi`);
+                    }
+                    await load();
+                } catch (err) {
+                    if (err.code === 'MAIL_FAILED' || err.code === 'MAIL_NOT_CONFIGURED') {
+                        App.error(err.message + '\n\nAyarlar KAYDEDİLMEDİ. Bilgileri kontrol edip tekrar dene.', 'Test maili başarısız');
+                    } else {
+                        App.showError(err);
+                    }
+                }
+                App.busy('#saveBtn', false);
+            });
+
+            // Kayıtlı anahtarlarla her sağlayıcıya küçük bir istek atar (kaydetmediğin değişiklikler test edilmez)
+            $('#testAiBtn').on('click', async function () {
+                if (changedItems().length && !await App.confirm('Kaydedilmemiş değişiklik var', 'Test, KAYITLI ayarlarla yapılır. Yine de devam edilsin mi?', 'Devam', 'question', false)) return;
+                App.busy(this, true, 'Test ediliyor');
+                try {
+                    const list = await api.post('admin/settings/test-ai');
+                    if (!list.length) {
+                        App.error('Hiç yapay zeka sağlayıcısı ayarlanmamış. Önce bir API anahtarı gir ve kaydet.');
+                    } else {
+                        const okCount = list.filter(x => x.success).length;
+                        Swal.fire({
+                            icon: okCount === list.length ? 'success' : okCount ? 'warning' : 'error',
+                            title: `${okCount}/${list.length} çalışıyor`,
+                            width: 720, confirmButtonColor: '#4f46e5', confirmButtonText: 'Tamam',
+                            html: `<div class="text-start small">${list.map(r => `
+                                <div class="d-flex gap-2 align-items-start py-2 border-bottom">
+                                    <i class="bi ${r.success ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger'} fs-5"></i>
+                                    <div class="flex-grow-1">
+                                        <div><b>${esc(r.provider)}</b> · <code>${esc(r.model)}</code>
+                                            <span class="badge bg-secondary-subtle text-secondary ms-1">${esc(r.kind)}</span>
+                                            <span class="text-body-secondary ms-1">${fmt.number(r.durationMs)} ms</span></div>
+                                        <div class="${r.success ? 'text-body-secondary' : 'text-danger'}">${esc(r.success ? (r.sample ? '“' + r.sample + '”' : 'Yanıt verdi') : r.errorMessage)}</div>
+                                    </div>
+                                </div>`).join('')}</div>
+                                <div class="small text-body-secondary mt-2 text-start">Sıra: Gemini → Gemini Lite → Groq → OpenRouter. Biri düşerse sıradakine geçilir.</div>`
+                        });
+                    }
+                } catch (err) { App.showError(err); }
+                App.busy(this, false);
+            });
+
+            $('#testMailBtn').on('click', async function () {
+                const { value: to } = await Swal.fire({
+                    title: 'Test maili', input: 'email', inputLabel: 'Kayıtlı ayarlarla gönderilir. Kime?', inputPlaceholder: 'ornek@mail.com',
+                    showCancelButton: true, confirmButtonText: 'Gönder', cancelButtonText: 'Vazgeç', confirmButtonColor: '#4f46e5',
+                    validationMessage: 'Geçerli bir e-posta gir'
+                });
+                if (!to) return;
+                App.busy(this, true, 'Gönderiliyor');
+                try {
+                    await api.post('admin/settings/test-mail', { toAddress: to });
+                    Swal.fire({ icon: 'success', title: 'Mail gönderildi', text: 'Gelen kutunu (ve spam klasörünü) kontrol et.', confirmButtonColor: '#4f46e5' });
+                } catch (err) { App.showError(err); }
+                App.busy(this, false);
+            });
+
+            load();
+        })();
+    </script>
+}

@@ -1,0 +1,133 @@
+@{
+    ViewData["Title"] = "Seyahat Kiti";
+}
+<div style="max-width:900px" class="mx-auto" id="travelApp" data-kit-id="@(ViewBag.KitId)">
+    <div class="mb-3"><a href="/Practice/Travel" class="small text-decoration-none" id="backLink"><i class="bi bi-arrow-left me-1"></i>AI Pratik</a></div>
+
+    <div id="createView" class="d-none">
+        <h1 class="h3 page-title">Seyahat kiti</h1>
+        <p class="page-subtitle">Nereye gidiyorsun? AI o yolculuk için en gerekli kalıpları, yerel ipuçlarını ve yerlilerin sana söyleyeceği cümleleri hazırlasın. Yola çıkmadan bir hafta önce çalış.</p>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="kitForm" class="row g-2">
+                    <div class="col-md-4"><label class="form-label small fw-semibold">Ülke *</label><input class="form-control" id="kCountry" maxlength="80" placeholder="İngiltere" required /></div>
+                    <div class="col-md-4"><label class="form-label small fw-semibold">Şehir</label><input class="form-control" id="kCity" maxlength="80" placeholder="Londra" /></div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Amaç</label>
+                        <select class="form-select" id="kPurpose">
+                            <option value="tourism">Tatil / gezi</option><option value="business">İş seyahati</option>
+                            <option value="conference">Konferans / etkinlik</option><option value="study">Eğitim / kurs</option><option value="visiting friends">Arkadaş / akraba ziyareti</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3"><label class="form-label small fw-semibold">Kaç gün?</label><input class="form-control" id="kDays" type="number" min="1" max="120" placeholder="7" /></div>
+                    <div class="col-md-9"><label class="form-label small fw-semibold">Notlar</label><input class="form-control" id="kNotes" maxlength="300" placeholder="Ör: Futbol maçına gideceğim, vejetaryenim, araba kiralayacağım" /></div>
+                    <div class="col-12 d-flex justify-content-end mt-2"><button class="btn btn-primary" id="createBtn" type="submit"><i class="bi bi-suitcase me-1"></i>Kiti hazırla</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-suitcase2 me-2"></i>Kitlerim</div>
+            <div class="list-group list-group-flush" id="kitList"><div class="p-3"><div class="skeleton" style="height:60px"></div></div></div>
+        </div>
+    </div>
+
+    <div id="kitView" class="d-none"></div>
+</div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc, fmt } = App;
+            const kitId = $('#travelApp').data('kit-id') || null;
+
+            if (kitId) return showKit(kitId);
+            $('#backLink').attr('href', '/Practice');
+            $('#createView').removeClass('d-none');
+            loadList();
+
+            async function loadList() {
+                try {
+                    const list = await api.get('travel-kits');
+                    $('#kitList').html(list.length ? list.map(k => `
+                        <a href="/Practice/Travel/${k.id}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+                            <div><div class="fw-semibold">${esc(k.title)}</div><div class="small text-body-secondary">${esc([k.city, k.country].filter(Boolean).join(', '))} · ${fmt.date(k.createdAt)}</div></div>
+                            ${k.addedToCards ? '<span class="badge bg-success-subtle text-success">Kartlarda</span>' : '<i class="bi bi-chevron-right text-body-secondary"></i>'}
+                        </a>`).join('') : '<div class="empty-state py-4"><i class="bi bi-suitcase"></i>Henüz kit yok.</div>');
+                } catch (e) { App.showError(e); }
+            }
+
+            $('#kitForm').on('submit', async function (e) {
+                e.preventDefault();
+                const country = $('#kCountry').val().trim();
+                if (!country) return App.toast('Ülke yaz', 'info');
+                App.busy('#createBtn', true, 'Hazırlanıyor (15-30 sn)');
+                try {
+                    const kit = await api.post('travel-kits', {
+                        country, city: $('#kCity').val().trim() || null, purpose: $('#kPurpose').val(),
+                        days: $('#kDays').val() ? parseInt($('#kDays').val(), 10) : null, notes: $('#kNotes').val().trim() || null
+                    });
+                    location.href = '/Practice/Travel/' + kit.id;
+                } catch (err) { App.showError(err); App.busy('#createBtn', false); }
+            });
+
+            async function showKit(id) {
+                $('#kitView').removeClass('d-none').html('<div class="skeleton" style="height:300px"></div>');
+                let kit;
+                try { kit = await api.get('travel-kits/' + id); } catch (e) { return App.showError(e); }
+                document.title = kit.title + ' · EnglishApp';
+                const c = kit.content;
+                const total = c.sections.reduce((n, s) => n + s.phrases.length, 0);
+
+                $('#kitView').html(`
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <h1 class="h3 page-title mb-0">${esc(kit.title)}</h1>
+                            <div class="small text-body-secondary">${esc([kit.city, kit.country].filter(Boolean).join(', '))}${kit.days ? ' · ' + kit.days + ' gün' : ''} · ${total} kalıp</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-danger btn-sm" id="delKit"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-primary" id="addCards" ${kit.addedToCards ? 'disabled' : ''}>
+                                <i class="bi ${kit.addedToCards ? 'bi-check2' : 'bi-plus-lg'} me-1"></i>${kit.addedToCards ? 'Kartlarına eklendi' : 'Hepsini kartlarıma ekle'}</button>
+                        </div>
+                    </div>
+                    <div class="card mb-3"><div class="card-body">
+                        <p class="mb-2">${esc(c.overviewTr)}</p>
+                        ${c.localTipsTr.length ? `<div class="fw-semibold small mb-1"><i class="bi bi-info-circle me-1"></i>Yerel ipuçları</div>
+                            <ul class="small mb-0">${c.localTipsTr.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+                    </div></div>
+                    ${c.sections.map(s => `
+                        <div class="card mb-3">
+                            <div class="card-header"><i class="bi bi-${esc(s.icon)} me-2"></i>${esc(s.titleTr)}</div>
+                            <div class="card-body py-1">
+                                ${s.phrases.map(p => `
+                                    <div class="phrase-row" data-shadow-scope>
+                                        <button class="btn btn-sm btn-icon say" data-text="${esc(p.en)}" title="Dinle"><i class="bi bi-volume-up"></i></button>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold" lang="en">${esc(p.en)}</div>
+                                            <div class="small">${esc(p.tr)}</div>
+                                            ${p.noteTr ? `<div class="small text-body-secondary fst-italic">${esc(p.noteTr)}</div>` : ''}
+                                        </div>
+                                        ${App.shadow.button(p.en, '')}
+                                    </div>`).join('')}
+                            </div>
+                        </div>`).join('')}`);
+
+                $('#kitView').on('click', '.say', function () { App.audio.speakAi($(this).data('text')); });
+                $('#kitView').on('click', '#addCards', async function () {
+                    App.busy(this, true, 'Ekleniyor');
+                    try {
+                        const n = await api.post(`travel-kits/${id}/add-to-cards`);
+                        App.toast(`${n} kalıp kartlarına eklendi. Çalış ekranında seni bekliyor ✈️`);
+                        $(this).html('<i class="bi bi-check2 me-1"></i>Kartlarına eklendi').prop('disabled', true);
+                    } catch (e) { App.showError(e); App.busy(this, false); }
+                });
+                $('#kitView').on('click', '#delKit', async function () {
+                    if (!await App.confirm('Kit silinsin mi?', 'Kartlarına eklediğin kalıplar kalır.', 'Sil')) return;
+                    try { await api.del('travel-kits/' + id); location.href = '/Practice/Travel'; } catch (e) { App.showError(e); }
+                });
+            }
+        })();
+    </script>
+}

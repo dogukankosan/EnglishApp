@@ -1,0 +1,138 @@
+@{
+    ViewData["Title"] = "Senaryo";
+}
+<div class="mb-3">
+    <a href="/Study" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Senaryolar</a>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="h3 page-title mb-0" id="scTitle"><span class="skeleton d-inline-block" style="width:220px;height:1.5rem"></span></h1>
+            <span class="level-badge" id="scLevel"></span>
+        </div>
+        <div class="text-body-secondary" id="scTitleEn"></div>
+        <div class="small text-body-secondary mt-1" id="scDesc"></div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" id="talkBtn" href="#"><i class="bi bi-mic me-1"></i>AI ile konuş</a>
+        <a class="btn btn-primary" id="studyBtn" href="#"><i class="bi bi-lightning-charge me-1"></i>Bu senaryoyu çalış</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                <span><i class="bi bi-chat-square-text me-2"></i>Diyalog</span>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <div id="audioPrefs"></div>
+                    <div class="form-check form-switch mb-0 small d-flex align-items-center gap-2">
+                        <input class="form-check-input" type="checkbox" id="showTr" checked />
+                        <label class="form-check-label" for="showTr">Türkçe</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" id="playAll"><i class="bi bi-play-fill me-1"></i>Hepsini dinle</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-light border small mb-3">
+                    <i class="bi bi-lightbulb me-1 text-warning"></i>
+                    <b>İpucu:</b> Önce Türkçeyi kapatıp sadece dinle. Anlamadığın satırları tekrar dinle, sonra Türkçeyi aç ve kontrol et.
+                </div>
+                <div class="dialogue" id="dialogue"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bookmark-star me-2"></i>Bu senaryonun kelimeleri</div>
+            <div class="list-group list-group-flush" id="wordList"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc, tts, posNames } = App;
+            const id = @(ViewBag.ScenarioId ?? 0);
+            let sc;
+            try { sc = await api.get('scenarios/' + id); } catch (e) { App.showError(e); return; }
+
+            document.title = sc.titleTr + ' · EnglishApp';
+            $('#scTitle').text(sc.titleTr);
+            $('#scLevel').text(sc.level);
+            $('#scTitleEn').text(sc.titleEn);
+            $('#scDesc').text(sc.descriptionTr || '');
+            $('#studyBtn').attr('href', '/Study/Session?scenarioId=' + sc.id);
+            $('#talkBtn').attr('href', '/Practice/Talk?scenarioId=' + sc.id);
+
+            // Konuşanlar sağ/sol ve farklı seslerle
+            const speakers = [...new Set(sc.lines.map(l => l.speakerRole))];
+            $('#dialogue').html(sc.lines.map((l, i) => `
+                <div class="bubble ${speakers.indexOf(l.speakerRole) % 2 === 0 ? 'left' : 'right'}" data-i="${i}" data-shadow-scope>
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                        <span class="speaker" lang="en">${esc(l.speakerRole || '')}</span>
+                        <span class="d-flex gap-1">
+                            <button class="btn btn-sm btn-icon" style="width:28px;height:28px" data-shadow-text="${esc(l.textEn)}" title="Tekrar et (telaffuz)"><i class="bi bi-mic"></i></button>
+                            <button class="btn btn-sm btn-icon line-play" style="width:28px;height:28px" title="Dinle"><i class="bi bi-volume-up"></i></button>
+                        </span>
+                    </div>
+                    <div class="en" lang="en">${esc(l.textEn)}</div>
+                    <div class="tr">${esc(l.textTr)}</div>
+                </div>`).join(''));
+
+            $('#wordList').html(sc.words.map(w => `
+                <div class="list-group-item d-flex align-items-center gap-3 py-3">
+                    <button class="speak-btn word-play" style="width:38px;height:38px;font-size:1rem" data-text="${esc(w.lemma)}" data-url="${esc(w.audioUrl || '')}" data-url-uk="${esc(w.audioUrlUk || '')}"><i class="bi bi-volume-up"></i></button>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">${esc(w.lemma)} <span class="small text-body-secondary fw-normal">${esc(w.ipa || '')}</span></div>
+                        <div class="small">${esc(w.meaningTr)} <span class="text-body-secondary">· ${esc(posNames[w.partOfSpeech] || '')}</span></div>
+                    </div>
+                    <span class="level-badge">${esc(w.level)}</span>
+                </div>`).join(''));
+
+            App.audio.prefsControl('#audioPrefs');
+            await tts.init();
+            const voices = tts.voices;
+            const main = tts.pickVoice();
+            // İkinci konuşmacı için farklı bir İngilizce ses
+            const second = voices.find(v => v !== main && /en-US/i.test(v.lang) && /natural|online/i.test(v.name))
+                || voices.find(v => v !== main && /en-(US|GB)/i.test(v.lang)) || main;
+            const voiceFor = role => speakers.indexOf(role) % 2 === 0 ? main : second;
+
+            let playingAll = false;
+            async function playLine(i) {
+                const l = sc.lines[i];
+                const $b = $(`.bubble[data-i="${i}"]`).addClass('playing');
+                $b[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                // Hazır doğal ses (Kokoro MP3, konuşmacıya göre kadın/erkek) yoksa tarayıcı sesi
+                const src = App.audio.pick(l);
+                if (!(src && await App.audio.playUrl('/bff/' + src, App.audio.rate)))
+                    await tts.speak(l.textEn, { voice: voiceFor(l.speakerRole) });
+                $b.removeClass('playing');
+            }
+
+            $('#dialogue').on('click', '.line-play', function () {
+                playingAll = false;
+                playLine($(this).closest('.bubble').data('i'));
+            });
+            $('#wordList').on('click', '.word-play', function () { App.audio.speak({ url: $(this).data('url'), urlUk: $(this).data('url-uk'), text: $(this).data('text') }); });
+            $('#showTr').on('change', function () { $('#dialogue').toggleClass('hide-tr', !this.checked); });
+
+            $('#playAll').on('click', async function () {
+                if (playingAll) { playingAll = false; tts.stop(); return; }
+                playingAll = true;
+                $(this).html('<i class="bi bi-stop-fill me-1"></i>Durdur');
+                for (let i = 0; i < sc.lines.length && playingAll; i++) {
+                    await playLine(i);
+                    await new Promise(r => setTimeout(r, 450));
+                }
+                playingAll = false;
+                $(this).html('<i class="bi bi-play-fill me-1"></i>Hepsini dinle');
+            });
+
+            if (!tts.supported) App.toast('Tarayıcın seslendirmeyi desteklemiyor. Chrome veya Edge önerilir.', 'warning');
+        })();
+    </script>
+}

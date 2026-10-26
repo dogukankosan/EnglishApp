@@ -1,0 +1,163 @@
+@{
+    ViewData["Title"] = "Profilim";
+}
+<h1 class="h3 page-title">Profilim</h1>
+<p class="page-subtitle">Bilgilerin, çalışma ayarların ve bildirimlerin.</p>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <div id="avatarBox" class="mb-3"></div>
+                <div class="fw-bold" id="pName"></div>
+                <div class="small text-body-secondary mb-3" id="pEmail"></div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <label class="btn btn-sm btn-outline-primary mb-0"><i class="bi bi-camera me-1"></i>Resim yükle
+                        <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" hidden />
+                    </label>
+                    <button class="btn btn-sm btn-outline-danger d-none" id="photoDelete"><i class="bi bi-trash"></i></button>
+                </div>
+                <div class="form-text">JPG, PNG veya WEBP · en fazla 2 MB</div>
+                <hr />
+                <div class="small text-start">
+                    <div class="d-flex justify-content-between py-1"><span class="text-body-secondary">Rol</span><span id="pRole"></span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-body-secondary">Günlük AI limiti</span><span id="pTokens"></span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-body-secondary">Üyelik</span><span id="pCreated"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-key me-2"></i>Şifre değiştir</div>
+            <div class="card-body">
+                <form id="pwForm" autocomplete="off">
+                    <input class="form-control mb-2" type="password" name="CurrentPassword" placeholder="Mevcut şifre" autocomplete="current-password" required />
+                    <input class="form-control mb-2" type="password" name="NewPassword" placeholder="Yeni şifre" autocomplete="new-password" required />
+                    <input class="form-control mb-2" type="password" name="NewPasswordConfirm" placeholder="Yeni şifre (tekrar)" autocomplete="new-password" required />
+                    <div class="form-text mb-2">En az 8 karakter, 1 harf ve 1 rakam. Diğer cihazlardaki oturumların kapanır.</div>
+                    <button class="btn btn-outline-primary w-100" type="submit">Şifreyi değiştir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-person me-2"></i>Kişisel bilgiler</div>
+            <div class="card-body">
+                <form id="nameForm" class="row g-2 align-items-end">
+                    <div class="col-sm-8">
+                        <label class="form-label small fw-semibold">Ad soyad</label>
+                        <input class="form-control" id="fullName" maxlength="100" required />
+                    </div>
+                    <div class="col-sm-4"><button class="btn btn-primary w-100" type="submit">Kaydet</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-flag me-2"></i>Hedefim</div>
+            <div class="card-body">
+                <form id="goalForm" class="row g-2 align-items-end">
+                    <div class="col-sm-4">
+                        <label class="form-label small fw-semibold">Hedef seviye</label>
+                        <select class="form-select" id="gLevel">
+                            <option value="">Hedef yok</option><option value="A2">A2 (temel)</option><option value="B1">B1 (rahat anlama)</option>
+                            <option value="B2">B2 (akıcı)</option><option value="C1">C1 (ileri)</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small fw-semibold">Hedef tarih</label>
+                        <input type="date" class="form-control" id="gDate" />
+                    </div>
+                    <div class="col-sm-4"><button class="btn btn-primary w-100" type="submit">Kaydet</button></div>
+                    <div class="col-12">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="gFreeze" />
+                            <label class="form-check-label" for="gFreeze">Haftada 1 dinlenme günü (o gün çalışmasan da serin bozulmaz)</label>
+                        </div>
+                        <div class="form-text">Durumum ekranında hedefe göre önde mi geride mi olduğunu ve günde kaç yeni kelime gerektiğini görürsün.</div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <form id="settingsForm">
+            <div class="card mb-4">
+                <div class="card-header"><i class="bi bi-sliders me-2"></i>Çalışma ayarları</div>
+                <div class="card-body row g-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Günlük yeni kelime</label>
+                        <input type="number" class="form-control" id="sNew" min="0" max="200" />
+                        <div class="form-text">Önerilen 10-20. Fazlası ileride tekrar yükünü çok artırır.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Günlük en fazla tekrar</label>
+                        <input type="number" class="form-control" id="sReview" min="0" max="2000" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold d-flex justify-content-between">Hedef hatırlama oranı <span id="retLabel"></span></label>
+                        <input type="range" class="form-range" id="sRetention" min="0.80" max="0.97" step="0.01" />
+                        <div class="form-text">Yüksek oran = daha sık tekrar, daha sağlam hafıza. %90 çoğu kişi için ideal.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="bi bi-volume-up me-2"></i>Ses</div>
+                <div class="card-body row g-3">
+                    <div class="col-sm-7">
+                        <label class="form-label small fw-semibold">İngilizce ses</label>
+                        <select class="form-select" id="sVoice"><option value="">Otomatik (en doğal ses)</option></select>
+                        <div class="form-text">Edge tarayıcısında "Natural" sesler çok daha doğal.</div>
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label small fw-semibold d-flex justify-content-between">Hız <span id="rateLabel"></span></label>
+                        <input type="range" class="form-range" id="sRate" min="0.5" max="1.5" step="0.05" />
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="testVoice"><i class="bi bi-play-fill"></i> Dene</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header"><i class="bi bi-bell me-2"></i>Bildirimler (e-posta)</div>
+                <div class="card-body row g-3">
+                    <div class="col-sm-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="sReminder" />
+                            <label class="form-check-label fw-semibold" for="sReminder">Günlük çalışma hatırlatması</label>
+                        </div>
+                        <div class="form-text">Çalışmadığın günlerde veya bekleyen tekrarın varsa mail gelir.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Saat</label>
+                        <input type="time" class="form-control" id="sReminderTime" />
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="sWeekly" />
+                            <label class="form-check-label fw-semibold" for="sWeekly">Haftalık rapor</label>
+                        </div>
+                        <div class="form-text">Haftanın özeti, öğrendiklerin ve zorlandığın kelimeler.</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small fw-semibold">Rapor günü</label>
+                        <select class="form-select" id="sWeeklyDay">
+                            <option value="1">Pazartesi</option><option value="2">Salı</option><option value="3">Çarşamba</option>
+                            <option value="4">Perşembe</option><option value="5">Cuma</option><option value="6">Cumartesi</option><option value="7">Pazar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="/Placement" class="btn btn-link px-0"><i class="bi bi-clipboard-check me-1"></i>Seviye testini (tekrar) yap</a>
+                <button class="btn btn-primary btn-lg" type="submit">Ayarları kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/profile.js" asp-append-version="true"></script>
+}

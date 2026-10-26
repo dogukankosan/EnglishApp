@@ -1,0 +1,77 @@
+@{
+    ViewData["Title"] = "Çalış";
+}
+<h1 class="h3 page-title">Çalış</h1>
+<p class="page-subtitle">Bugünkü tekrarlarını yap ya da bir senaryo seç. Her senaryo gerçek hayattan bir durum.</p>
+
+<div class="card hero-card mb-4">
+    <div class="card-body p-4 d-flex flex-column flex-md-row align-items-md-center gap-3">
+        <div class="flex-grow-1">
+            <div class="h5 fw-bold mb-1">Karışık çalışma</div>
+            <div class="text-soft small">Zamanı gelen tüm tekrarlar + günlük yeni kelime hakkın. Hangi senaryoyu seçeceğini bilmiyorsan buradan başla.</div>
+        </div>
+        <a href="/Study/Session" class="btn btn-light btn-lg px-4"><i class="bi bi-play-fill me-1"></i>Başla</a>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 fw-bold mb-0">Senaryolar</h2>
+    <select class="form-select form-select-sm w-auto" id="catFilter"><option value="">Tüm kategoriler</option></select>
+</div>
+<div class="row g-3" id="scenarioGrid">
+    @for (var i = 0; i < 6; i++)
+    {
+        <div class="col-md-6 col-xl-4"><div class="card"><div class="card-body"><div class="skeleton" style="height:110px"></div></div></div></div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc } = App;
+            let list = [];
+            try { list = await api.get('scenarios'); } catch (e) { App.showError(e); return; }
+
+            const cats = [...new Map(list.map(s => [s.categoryId, s.categoryName])).entries()];
+            $('#catFilter').append(cats.map(([id, n]) => `<option value="${id}">${esc(n)}</option>`).join(''));
+
+            function render() {
+                const cat = $('#catFilter').val();
+                const items = list.filter(s => !cat || String(s.categoryId) === cat);
+                $('#scenarioGrid').html(items.length ? items.map(s => `
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card scenario-card" data-id="${s.id}">
+                            <div class="card-body">
+                                <div class="d-flex gap-3 align-items-start mb-3">
+                                    <span class="scenario-icon"><i class="bi ${esc(s.iconName || 'bi-chat')}"></i></span>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div class="fw-bold">${esc(s.titleTr)}</div>
+                                            <span class="level-badge">${esc(s.level)}</span>
+                                        </div>
+                                        <div class="small text-body-secondary">${esc(s.titleEn)}</div>
+                                    </div>
+                                </div>
+                                <p class="small text-body-secondary mb-3" style="min-height:2.6em">${esc(s.descriptionTr || '')}</p>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-body-secondary">${s.studiedItems}/${s.totalItems} çalışıldı</span>
+                                    <span class="fw-semibold">%${s.progressPercent}</span>
+                                </div>
+                                <div class="progress mb-3"><div class="progress-bar" style="width:${s.progressPercent}%"></div></div>
+                                <div class="d-flex gap-2">
+                                    <a href="/Study/Scenario/${s.id}" class="btn btn-outline-primary btn-sm flex-fill"><i class="bi bi-headphones me-1"></i>Dinle & oku</a>
+                                    <a href="/Study/Session?scenarioId=${s.id}" class="btn btn-primary btn-sm flex-fill"><i class="bi bi-lightning-charge me-1"></i>Çalış</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`).join('') : '<div class="col-12"><div class="empty-state"><i class="bi bi-inbox"></i>Bu kategoride senaryo yok.</div></div>');
+            }
+            render();
+            $('#catFilter').on('change', render);
+            $('#scenarioGrid').on('click', '.scenario-card', function (e) {
+                if ($(e.target).closest('a').length) return;
+                location.href = '/Study/Scenario/' + $(this).data('id');
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,75 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Giriş";
+    Layout = "_AuthLayout";
+}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="h5 fw-bold mb-3">Giriş yap</h2>
+        <form asp-action="Login" method="post" novalidate id="loginForm">
+            <input type="hidden" asp-for="ReturnUrl" />
+            @* Bot tuzağı: insan görmez, basit botlar doldurur. Doluysa istek reddedilir. *@
+            <div class="hp-field" aria-hidden="true">
+                <label for="Website">Web siteniz</label>
+                <input type="text" id="Website" name="Website" tabindex="-1" autocomplete="off" value="" />
+            </div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label small fw-semibold">E-posta</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                    <input asp-for="Email" class="form-control" type="email" autocomplete="username" autofocus placeholder="ornek@mail.com" />
+                </div>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label small fw-semibold">Şifre</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                    <input asp-for="Password" class="form-control" type="password" autocomplete="current-password" />
+                </div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="form-check mb-4">
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label small">Beni hatırla (7 gün)</label>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.CaptchaSiteKey))
+            {
+                <div class="mb-3">
+                    <div class="small text-body-secondary mb-2" id="captchaHint"><i class="bi bi-shield-check me-1"></i>Birkaç hatalı deneme oldu. Devam etmek için güvenlik doğrulamasını tamamla.</div>
+                    <div class="cf-turnstile" data-sitekey="@Model.CaptchaSiteKey" data-language="tr" data-theme="auto" data-callback="onCaptchaOk" data-expired-callback="onCaptchaExpired"></div>
+                </div>
+            }
+
+            <button class="btn btn-primary btn-lg w-100" type="submit" id="loginBtn">Giriş yap</button>
+        </form>
+    </div>
+</div>
+<p class="text-center small text-body-secondary mt-3">Hesabın yoksa yöneticinden iste.</p>
+
+@section Scripts {
+    @if (!string.IsNullOrEmpty(Model.CaptchaSiteKey))
+    {
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    }
+    <script>
+        const needCaptcha = @(string.IsNullOrEmpty(Model.CaptchaSiteKey) ? "false" : "true");
+        let captchaOk = !needCaptcha;
+        window.onCaptchaOk = () => { captchaOk = true; };
+        window.onCaptchaExpired = () => { captchaOk = false; };
+        $('#loginForm').on('submit', function (e) {
+            if (!$('#Email').val() || !$('#Password').val()) return true;
+            if (!captchaOk) {
+                e.preventDefault();
+                $('#captchaHint').removeClass('text-body-secondary').addClass('text-danger fw-semibold');
+                return false;
+            }
+            $('#loginBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Giriş yapılıyor');
+        });
+    </script>
+}

@@ -1,0 +1,82 @@
+@{
+    ViewData["Title"] = "Kullanıcılar";
+}
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@2.1.8/css/dataTables.bootstrap5.min.css" />
+}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 page-title">Kullanıcılar</h1>
+        <p class="page-subtitle mb-0">Hesap aç, düzenle, pasife al. Kullanıcılar ilk girişte şifrelerini değiştirir.</p>
+    </div>
+    <button class="btn btn-primary" id="newUserBtn"><i class="bi bi-person-plus me-1"></i>Yeni kullanıcı</button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle w-100" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>Rol</th>
+                        <th>Durum</th>
+                        <th>Günlük token</th>
+                        <th>Son giriş</th>
+                        <th class="text-end">İşlem</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content" id="userForm" novalidate>
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Yeni kullanıcı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="uId" />
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Ad soyad</label>
+                    <input class="form-control" id="uName" maxlength="100" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">E-posta</label>
+                    <input class="form-control" id="uEmail" type="email" maxlength="256" required />
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Rol</label>
+                        <select class="form-select" id="uRole"><option value="User">Kullanıcı</option><option value="Admin">Yönetici</option></select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Günlük token limiti</label>
+                        <input class="form-control" id="uTokens" type="number" min="0" placeholder="Boş = sınırsız" />
+                    </div>
+                </div>
+                <div class="mb-1" id="pwGroup">
+                    <label class="form-label small fw-semibold">Geçici şifre</label>
+                    <div class="input-group">
+                        <input class="form-control" id="uPassword" type="text" autocomplete="off" />
+                        <button class="btn btn-outline-secondary" type="button" id="genPw" title="Şifre üret"><i class="bi bi-shuffle"></i></button>
+                    </div>
+                    <div class="form-text">Kullanıcı ilk girişte değiştirmek zorunda. En az 8 karakter, 1 harf, 1 rakam.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" class="btn btn-primary" id="userSaveBtn">Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net@2.1.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/datatables.net-bs5@2.1.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="~/js/pages/admin-users.js" asp-append-version="true"></script>
+}

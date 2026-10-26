@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Dinleme Testi";
+}
+<div style="max-width:820px" class="mx-auto" id="listenApp" data-scenario-id="@(ViewBag.ScenarioId)">
+    <div class="mb-3"><a href="/Practice" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>AI Pratik</a></div>
+
+    @* Liste görünümü *@
+    <div id="listView" class="d-none">
+        <h1 class="h3 page-title">Dinleme testi</h1>
+        <p class="page-subtitle">Diyaloğu <b>metni görmeden</b> dinle, Türkçe soruları cevapla. Gerçek hayatta karşındakini anlayıp anlamadığını ölçer.</p>
+
+        <div class="card mb-4">
+            <div class="card-body d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
+                <span class="stat-icon icon-pink mb-0"><i class="bi bi-ear"></i></span>
+                <div class="flex-grow-1">
+                    <div class="fw-bold" id="summaryTitle">Dinleme seviyen</div>
+                    <div class="small text-body-secondary" id="summaryText"></div>
+                </div>
+                <div class="text-end"><div class="stat-value" id="summaryScore">-</div><div class="stat-label">son 30 gün</div></div>
+            </div>
+        </div>
+        <div class="list-group" id="scenarioList"><div class="skeleton" style="height:200px"></div></div>
+    </div>
+
+    @* Test görünümü *@
+    <div id="quizView" class="d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <h1 class="h4 page-title mb-0" id="quizTitle"></h1>
+                <div class="small text-body-secondary" id="quizSubtitle"></div>
+            </div>
+            <div id="audioPrefs"></div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="listen-player">
+                <button class="speak-btn speak-lg" id="playBtn" title="Diyaloğu dinle"><i class="bi bi-play-fill"></i></button>
+                <div class="small text-body-secondary" id="playInfo">Önce dinle, sonra soruları cevapla. En fazla 3 kez dinleyebilirsin.</div>
+                <div class="progress w-75" style="height:6px"><div class="progress-bar" id="playProgress" style="width:0%"></div></div>
+            </div>
+        </div>
+
+        <div id="questions"></div>
+        <div class="d-flex justify-content-end mt-3" id="submitWrap">
+            <button class="btn btn-primary btn-lg" id="submitBtn" disabled>Cevapları kontrol et</button>
+        </div>
+
+        <div id="result" class="mt-3"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/listen.js" asp-append-version="true"></script>
+}

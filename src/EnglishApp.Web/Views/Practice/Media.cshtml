@@ -1,0 +1,80 @@
+@{
+    ViewData["Title"] = "Ne İzlesem?";
+}
+<div style="max-width:960px" class="mx-auto">
+    <div class="mb-3"><a href="/Practice" class="small text-decoration-none"><i class="bi bi-arrow-left me-1"></i>AI Pratik</a></div>
+    <h1 class="h3 page-title">Ne izlesem, ne dinlesem?</h1>
+    <p class="page-subtitle">Seviyene uygun diziler, YouTube kanalları ve podcast'ler. Günde 20-30 dakika izlemek kulağını en hızlı geliştiren şey. İlk başta İngilizce altyazıyla izle.</p>
+
+    <div class="d-flex flex-wrap gap-2 mb-3" id="filters">
+        <div class="btn-group btn-group-sm" role="group" id="typeFilter">
+            <button class="btn btn-outline-primary active" data-type="0">Hepsi</button>
+            <button class="btn btn-outline-primary" data-type="1"><i class="bi bi-tv me-1"></i>Dizi</button>
+            <button class="btn btn-outline-primary" data-type="4"><i class="bi bi-film me-1"></i>Film</button>
+            <button class="btn btn-outline-primary" data-type="2"><i class="bi bi-youtube me-1"></i>YouTube</button>
+            <button class="btn btn-outline-primary" data-type="3"><i class="bi bi-mic me-1"></i>Podcast</button>
+        </div>
+        <select class="form-select form-select-sm w-auto" id="levelFilter">
+            <option value="">Tüm seviyeler</option><option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option>
+        </select>
+        <select class="form-select form-select-sm w-auto" id="statusFilter">
+            <option value="">Hepsi</option><option value="mine">Listem</option><option value="2">İzlediklerim</option><option value="3">Bitirdiklerim</option>
+        </select>
+    </div>
+
+    <div class="row g-3" id="mediaList"><div class="col-12"><div class="skeleton" style="height:160px"></div></div></div>
+</div>
+
+@section Scripts {
+    <script>
+        (async function () {
+            const { api, esc } = App;
+            const types = { 1: ['Dizi', 'tv', 'icon-indigo'], 2: ['YouTube', 'youtube', 'icon-red'], 3: ['Podcast', 'mic', 'icon-green'], 4: ['Film', 'film', 'icon-orange'] };
+            const statuses = { 0: 'Ekle', 1: 'Listemde', 2: 'İzliyorum', 3: 'Bitirdim' };
+            const accents = { us: 'Amerikan', uk: 'İngiliz', mix: 'Karışık' };
+            let items = [], type = 0;
+
+            try { items = await api.get('media'); } catch (e) { return App.showError(e); }
+            render();
+
+            function render() {
+                const level = $('#levelFilter').val(), st = $('#statusFilter').val();
+                const list = items.filter(m => (!type || m.mediaType === type) && (!level || m.level === level)
+                    && (!st || (st === 'mine' ? m.myStatus > 0 : m.myStatus === parseInt(st, 10))));
+                $('#mediaList').html(list.length ? list.map(m => {
+                    const t = types[m.mediaType] || types[1];
+                    return `<div class="col-md-6 col-lg-4"><div class="card h-100"><div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="stat-icon ${t[2]} mb-0" style="width:36px;height:36px"><i class="bi bi-${t[1]}"></i></span>
+                            <div class="min-w-0"><div class="fw-bold text-truncate" lang="en">${esc(m.title)}</div>
+                                <div class="small text-body-secondary">${t[0]} · <span class="level-badge">${esc(m.level)}+</span>${m.accent ? ' · ' + (accents[m.accent] || esc(m.accent)) : ''}</div></div>
+                        </div>
+                        <p class="small mb-2">${esc(m.descriptionTr)}</p>
+                        ${m.tipTr ? `<p class="small text-body-secondary fst-italic mb-2"><i class="bi bi-lightbulb me-1"></i>${esc(m.tipTr)}</p>` : ''}
+                        <div class="mt-auto d-flex gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1"></i>Bul</a>
+                            <select class="form-select form-select-sm ms-auto w-auto st" data-id="${m.id}">
+                                ${Object.entries(statuses).map(([k, v]) => `<option value="${k}" ${m.myStatus == k ? 'selected' : ''}>${k == 0 && m.myStatus ? 'Listeden çıkar' : v}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div></div></div>`;
+                }).join('') : '<div class="col-12"><div class="empty-state py-4"><i class="bi bi-camera-reels"></i>Bu filtrede öneri yok.</div></div>');
+            }
+
+            $('#typeFilter').on('click', 'button', function () {
+                $('#typeFilter button').removeClass('active'); $(this).addClass('active');
+                type = parseInt($(this).data('type'), 10); render();
+            });
+            $('#levelFilter, #statusFilter').on('change', render);
+            $('#mediaList').on('change', '.st', async function () {
+                const id = $(this).data('id'), status = parseInt(this.value, 10);
+                try {
+                    await api.put(`media/${id}/status`, { status });
+                    items.find(m => m.id === id).myStatus = status;
+                    App.toast(status ? 'Kaydedildi: ' + statuses[status] : 'Listeden çıkarıldı');
+                    render();
+                } catch (e) { App.showError(e); }
+            });
+        })();
+    </script>
+}

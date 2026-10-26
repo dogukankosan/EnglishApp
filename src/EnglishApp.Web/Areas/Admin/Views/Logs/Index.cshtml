@@ -1,0 +1,158 @@
+@{
+    ViewData["Title"] = "Loglar";
+}
+<h1 class="h3 page-title">Loglar</h1>
+<p class="page-subtitle">Uyarı ve hata kayıtları (API + Web). Kullanıcıya gösterilen hata kodunu "Correlation ID" alanına yazarak iki projedeki izi birlikte bulabilirsin.</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form id="filterForm" class="row g-2 align-items-end">
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Seviye</label>
+                <select class="form-select form-select-sm" name="level">
+                    <option value="">Tümü</option><option>Error</option><option>Warning</option><option>Fatal</option><option>Information</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Kaynak</label>
+                <select class="form-select form-select-sm" name="sourceApp"><option value="">Tümü</option><option>Api</option><option>Web</option></select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Başlangıç</label>
+                <input type="date" class="form-control form-control-sm" name="from" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Bitiş</label>
+                <input type="date" class="form-control form-control-sm" name="to" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Correlation ID</label>
+                <input class="form-control form-control-sm" name="correlationId" maxlength="50" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Ara</label>
+                <input class="form-control form-control-sm" name="search" maxlength="200" placeholder="Mesaj / hata" />
+            </div>
+            <div class="col-12 d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-sm btn-outline-success me-auto" id="exportBtn" title="Filtrelenmiş kayıtları indir (en fazla 20.000 satır)">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Excel'e aktar
+                </button>
+                <button type="reset" class="btn btn-sm btn-light">Temizle</button>
+                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Filtrele</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>Zaman</th><th>Seviye</th><th class="d-none d-md-table-cell">Kaynak</th><th>Mesaj</th><th class="d-none d-lg-table-cell">Kullanıcı</th></tr></thead>
+                <tbody id="logRows"></tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-body-secondary" id="pageInfo"></span>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" id="prevPage"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" id="nextPage"><i class="bi bi-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="logModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Log detayı</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body" id="logDetail"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const { api, esc, fmt } = App;
+            const modal = new bootstrap.Modal('#logModal');
+            let page = 1, items = [];
+            const pageSize = 50;
+
+            function filters() {
+                const q = Object.fromEntries(new FormData(document.getElementById('filterForm')).entries());
+                Object.keys(q).forEach(k => { if (!q[k]) delete q[k]; });
+                return q;
+            }
+
+            // Excel: dosya fetch ile alınır, hata gelirse (JSON) kullanıcıya gösterilir
+            $('#exportBtn').on('click', async function () {
+                App.busy(this, true, 'Hazırlanıyor');
+                try {
+                    const res = await fetch('/bff/admin/logs/export?' + new URLSearchParams(filters()), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin'
+                    });
+                    const type = res.headers.get('Content-Type') || '';
+                    if (!res.ok || type.includes('json')) {
+                        const body = type.includes('json') ? await res.json() : null;
+                        if (res.status === 401) { location.href = '/Account/Login'; return; }
+                        throw new App.ApiError(body?.error?.code, body?.error?.message || 'Dosya oluşturulamadı.', res.status, null, body?.correlationId);
+                    }
+                    const name = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'loglar.xlsx';
+                    const url = URL.createObjectURL(await res.blob());
+                    const a = Object.assign(document.createElement('a'), { href: url, download: decodeURIComponent(name) });
+                    document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 2000);
+                    App.toast('Excel dosyası indirildi');
+                } catch (e) { App.showError(e); }
+                App.busy(this, false);
+            });
+
+            async function load() {
+                const q = filters();
+                $('#logRows').html('<tr><td colspan="5"><div class="skeleton" style="height:120px"></div></td></tr>');
+                try {
+                    const r = await api.get('admin/logs', { ...q, page, pageSize });
+                    items = r.items;
+                    $('#logRows').html(items.length ? items.map((l, i) => `
+                        <tr role="button" data-i="${i}">
+                            <td class="small text-nowrap">${fmt.dateTime(l.timeStamp)}</td>
+                            <td><span class="log-level log-${esc(l.level)}">${esc(l.level)}</span></td>
+                            <td class="d-none d-md-table-cell small">${esc(l.sourceApp || '')}</td>
+                            <td class="small" style="max-width:520px"><div class="text-truncate">${esc(l.message || '')}</div>
+                                ${l.requestPath ? `<div class="text-body-secondary text-truncate">${esc(l.requestMethod || '')} ${esc(l.requestPath)}</div>` : ''}</td>
+                            <td class="d-none d-lg-table-cell small">${l.userId ?? '-'}</td>
+                        </tr>`).join('') : '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-check2-circle"></i>Kayıt yok. Her şey yolunda görünüyor.</div></td></tr>');
+                    const from = r.totalCount ? (page - 1) * pageSize + 1 : 0;
+                    $('#pageInfo').text(`${from}-${Math.min(page * pageSize, r.totalCount)} / ${r.totalCount}`);
+                    $('#prevPage').prop('disabled', page <= 1);
+                    $('#nextPage').prop('disabled', page * pageSize >= r.totalCount);
+                } catch (e) { App.showError(e); }
+            }
+
+            $('#logRows').on('click', 'tr[data-i]', function () {
+                const l = items[$(this).data('i')];
+                let props = l.properties;
+                try { props = JSON.stringify(JSON.parse(l.properties), null, 2); } catch { }
+                $('#logDetail').html(`
+                    <dl class="row small mb-3">
+                        <dt class="col-sm-3">Zaman</dt><dd class="col-sm-9">${fmt.dateTime(l.timeStamp)}</dd>
+                        <dt class="col-sm-3">Seviye</dt><dd class="col-sm-9"><span class="log-level log-${esc(l.level)}">${esc(l.level)}</span> · ${esc(l.sourceApp || '')}</dd>
+                        <dt class="col-sm-3">Correlation ID</dt><dd class="col-sm-9"><code>${esc(l.correlationId || '-')}</code></dd>
+                        <dt class="col-sm-3">İstek</dt><dd class="col-sm-9">${esc(l.requestMethod || '')} ${esc(l.requestPath || '-')}</dd>
+                        <dt class="col-sm-3">Kullanıcı / IP</dt><dd class="col-sm-9">${l.userId ?? '-'} · ${esc(l.clientIp || '-')}</dd>
+                    </dl>
+                    <h6 class="fw-semibold">Mesaj</h6><pre class="log-pre">${esc(l.message || '')}</pre>
+                    ${l.exception ? `<h6 class="fw-semibold">Hata (exception)</h6><pre class="log-pre text-danger">${esc(l.exception)}</pre>` : ''}
+                    ${props ? `<h6 class="fw-semibold">Özellikler</h6><pre class="log-pre">${esc(props)}</pre>` : ''}`);
+                modal.show();
+            });
+
+            $('#filterForm').on('submit', e => { e.preventDefault(); page = 1; load(); });
+            $('#filterForm').on('reset', () => setTimeout(() => { page = 1; load(); }));
+            $('#prevPage').on('click', () => { page--; load(); });
+            $('#nextPage').on('click', () => { page++; load(); });
+            load();
+        })();
+    </script>
+}
