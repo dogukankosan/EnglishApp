@@ -362,15 +362,24 @@ public sealed partial class AdminContentService(
 
             if (!string.IsNullOrWhiteSpace(e.ExampleEn))
             {
+                // Aynı örnek cümle zaten varsa (AI farklı kelimeler için aynı cümleyi verebiliyor) yenisi açılmaz, mevcut cümle bağlanır
                 var sentenceId = await c.ExecuteScalarAsync<int>(new CommandDefinition(
                     """
-                    INSERT INTO content.Sentences (ScenarioId, TextEn, TextTr, Level, Status, CreatedAt) VALUES (NULL, @en, @tr, @level, 1, @now);
-                    SELECT CAST(SCOPE_IDENTITY() AS int);
+                    DECLARE @id int = (SELECT TOP (1) Id FROM content.Sentences
+                                       WHERE TextEn = @en AND ScenarioId IS NULL AND OwnerUserId IS NULL AND Status = 1 ORDER BY Id);
+                    IF @id IS NULL
+                    BEGIN
+                        INSERT INTO content.Sentences (ScenarioId, TextEn, TextTr, Level, Status, CreatedAt) VALUES (NULL, @en, @tr, @level, 1, @now);
+                        SET @id = CAST(SCOPE_IDENTITY() AS int);
+                    END
+                    SELECT @id;
                     """, new { en = Cut(e.ExampleEn.Trim(), 500), tr = Cut(e.ExampleTr.Trim(), 500), level, now = clock.Now }, tx, cancellationToken: ct));
                 if (ContentSeeder.FindWord(e.ExampleEn, lemma) is { } m)
                     await c.ExecuteAsync(new CommandDefinition(
-                        "INSERT INTO content.SentenceWords (SentenceId, WordId, CharStart, CharLength) VALUES (@sentenceId, @wordId, @s, @l)",
-                        new { sentenceId, wordId, s = (short)m.Start, l = (short)m.Length }, tx, cancellationToken: ct));
+                        """
+                        IF NOT EXISTS (SELECT 1 FROM content.SentenceWords WHERE SentenceId = @sentenceId AND WordId = @wordId)
+                            INSERT INTO content.SentenceWords (SentenceId, WordId, CharStart, CharLength) VALUES (@sentenceId, @wordId, @s, @l)
+                        """, new { sentenceId, wordId, s = (short)m.Start, l = (short)m.Length }, tx, cancellationToken: ct));
             }
             return 0;
         }, ct);

@@ -92,6 +92,15 @@ public sealed class AdminSettingsController(IAdminSettingsService service) : Api
         return Success(results);
     }
 
+    /// <summary>Günlük / haftalık / aylık mailin örneğini işlemi yapan adminin kendi adresine gönderir.</summary>
+    [HttpPost("sample-report/{type}")]
+    public async Task<ActionResult<ApiResponse>> SampleReport(string type, [FromServices] IJobService jobs,
+        [FromServices] EnglishApp.Api.Infrastructure.Security.ICurrentUser me, CancellationToken ct)
+    {
+        await jobs.SendSampleReportAsync(me.Id, type.ToLowerInvariant(), ct);
+        return Success();
+    }
+
     [HttpPost("test-mail")]
     public async Task<ActionResult<ApiResponse>> TestMail(TestMailRequest req, CancellationToken ct)
     {

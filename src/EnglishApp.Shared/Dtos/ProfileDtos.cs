@@ -28,6 +28,8 @@ public class UserSettingsDto
     public string ReminderTime { get; set; } = "20:00";
     public bool WeeklyReportEnabled { get; set; }
     public byte WeeklyReportDay { get; set; }
+    /// <summary>Her ayın ilk günlerinde geçen ayın değerlendirmesi.</summary>
+    public bool MonthlyReportEnabled { get; set; }
     public string? TtsVoice { get; set; }
     public decimal TtsRate { get; set; }
     public bool PlacementTestDone { get; set; }
@@ -45,6 +47,7 @@ public class UpdateSettingsRequest
     public string ReminderTime { get; set; } = "20:00";
     public bool WeeklyReportEnabled { get; set; }
     public byte WeeklyReportDay { get; set; }
+    public bool MonthlyReportEnabled { get; set; }
     public string? TtsVoice { get; set; }
     public decimal TtsRate { get; set; }
 }

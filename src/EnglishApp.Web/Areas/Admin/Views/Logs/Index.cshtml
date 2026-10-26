@@ -10,7 +10,7 @@
             <div class="col-6 col-md-2">
                 <label class="form-label small fw-semibold">Seviye</label>
                 <select class="form-select form-select-sm" name="level">
-                    <option value="">Tümü</option><option>Error</option><option>Warning</option><option>Fatal</option><option>Information</option>
+                    <option value="">Tümü</option><option value="Error">Hata</option><option value="Warning">Uyarı</option><option value="Fatal">Kritik</option><option value="Information">Bilgi</option>
                 </select>
             </div>
             <div class="col-6 col-md-2">
@@ -75,6 +75,7 @@
     <script>
         (function () {
             const { api, esc, fmt } = App;
+            const levelTr = { Error: 'Hata', Warning: 'Uyarı', Fatal: 'Kritik', Information: 'Bilgi', Debug: 'Ayrıntı', Verbose: 'Ayrıntı' };
             const modal = new bootstrap.Modal('#logModal');
             let page = 1, items = [];
             const pageSize = 50;
@@ -117,7 +118,7 @@
                     $('#logRows').html(items.length ? items.map((l, i) => `
                         <tr role="button" data-i="${i}">
                             <td class="small text-nowrap">${fmt.dateTime(l.timeStamp)}</td>
-                            <td><span class="log-level log-${esc(l.level)}">${esc(l.level)}</span></td>
+                            <td><span class="log-level log-${esc(l.level)}">${esc(levelTr[l.level] || l.level)}</span></td>
                             <td class="d-none d-md-table-cell small">${esc(l.sourceApp || '')}</td>
                             <td class="small" style="max-width:520px"><div class="text-truncate">${esc(l.message || '')}</div>
                                 ${l.requestPath ? `<div class="text-body-secondary text-truncate">${esc(l.requestMethod || '')} ${esc(l.requestPath)}</div>` : ''}</td>
@@ -137,7 +138,7 @@
                 $('#logDetail').html(`
                     <dl class="row small mb-3">
                         <dt class="col-sm-3">Zaman</dt><dd class="col-sm-9">${fmt.dateTime(l.timeStamp)}</dd>
-                        <dt class="col-sm-3">Seviye</dt><dd class="col-sm-9"><span class="log-level log-${esc(l.level)}">${esc(l.level)}</span> · ${esc(l.sourceApp || '')}</dd>
+                        <dt class="col-sm-3">Seviye</dt><dd class="col-sm-9"><span class="log-level log-${esc(l.level)}">${esc(levelTr[l.level] || l.level)}</span> · ${esc(l.sourceApp || '')}</dd>
                         <dt class="col-sm-3">Correlation ID</dt><dd class="col-sm-9"><code>${esc(l.correlationId || '-')}</code></dd>
                         <dt class="col-sm-3">İstek</dt><dd class="col-sm-9">${esc(l.requestMethod || '')} ${esc(l.requestPath || '-')}</dd>
                         <dt class="col-sm-3">Kullanıcı / IP</dt><dd class="col-sm-9">${l.userId ?? '-'} · ${esc(l.clientIp || '-')}</dd>

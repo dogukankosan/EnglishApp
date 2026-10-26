@@ -181,10 +181,12 @@ Sunucunun dili, saati ve collation'ı Türkiye'den farklı. Bu yüzden:
 
 - **MailKit** ile, SMTP ayarları admin panelinden (DB'de şifreli).
 - Kullanıcı bazlı, kullanıcı profilinden açılıp kapatılır:
-  - **Günlük hatırlatma** (saati kullanıcı seçer): bugün tekrar edilecek kart sayısı, seri durumu
-  - **Haftalık rapor** (günü kullanıcı seçer): bu hafta öğrenilenler, tekrar edilmesi gerekenler, zorlandıkların, performans
+  - **Günlük hatırlatma ve özet** (saati kullanıcı seçer): çalışmadıysa / bekleyen tekrarı varsa hatırlatma; o günün işini bitirdiyse günün özeti (kart, yeni kelime, süre, doğruluk, seri)
+  - **Haftalık rapor** (günü kullanıcı seçer): bu hafta öğrenilenler, tekrar edilmesi gerekenler, zorlandıkların, performans + AI koç yorumu
+  - **Aylık rapor** (açılıp kapatılır, ayın ilk 3 günü, geçen ay için): çalışılan gün/süre/kart/yeni kelime/doğruluk, en uzun seri, kelime dağarcığı ve tahmini seviye, AI pratik özeti, bu ay öğrenilen kelimelerden örnekler, zorlanılan kelimeler, aylık sıralama ve kısa değerlendirme yorumu. `database/011_Monthly_Report.sql`
+- Admin > Ayarlar'dan günlük / haftalık / aylık mailin örneği kendi verisiyle admin'in kendi adresine gönderilebilir (`POST /api/v1/admin/settings/sample-report/{daily|weekly|monthly}`).
 - Tetikleme: dış bir cron servisi (ör. cron-job.org) API'deki korumalı `/api/v1/jobs/run` adresini 15 dakikada bir çağırır (gizli anahtar ile). IIS uyku moduna geçse de çalışır.
-- Aynı gün aynı mail iki kez gitmez (`LastReminderSentDate` kontrolü).
+- Aynı mail aynı dönemde iki kez gitmez (`LastReminderSentDate` / `LastWeeklyReportSentDate` / `LastMonthlyReportSentDate`).
 - Tüm gönderimler `app.EmailLogs` tablosuna yazılır.
 - Sunucuda dış SMTP portunun açık olduğu kurulumda test maili ile doğrulanır.
 

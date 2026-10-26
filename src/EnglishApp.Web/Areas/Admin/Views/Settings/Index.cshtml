@@ -26,6 +26,13 @@
         <pre class="log-pre mb-2">POST {API adresi}/api/v1/jobs/run
 Header: X-Job-Key: {Zamanlanmış işler > Cron tetikleme gizli anahtarı}</pre>
         <p class="mb-0 text-body-secondary">Sunucu uykuya geçse bile hatırlatmalar zamanında gider. Gece 03:00'ten sonraki ilk çağrıda eski loglar da temizlenir.</p>
+        <hr />
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-body-secondary">Mailler nasıl görünüyor? Kendi verinle örneğini kendi adresine gönder:</span>
+            <button type="button" class="btn btn-sm btn-outline-primary sample-report" data-type="daily">Günlük</button>
+            <button type="button" class="btn btn-sm btn-outline-primary sample-report" data-type="weekly">Haftalık</button>
+            <button type="button" class="btn btn-sm btn-outline-primary sample-report" data-type="monthly">Aylık</button>
+        </div>
     </div>
 </div>
 
@@ -190,6 +197,13 @@ Header: X-Job-Key: {Zamanlanmış işler > Cron tetikleme gizli anahtarı}</pre>
                         });
                     }
                 } catch (err) { App.showError(err); }
+                App.busy(this, false);
+            });
+
+            $(document).on('click', '.sample-report', async function () {
+                App.busy(this, true, '');
+                try { await api.post('admin/settings/sample-report/' + $(this).data('type')); App.toast('Örnek mail gönderildi, gelen kutunu kontrol et'); }
+                catch (e) { App.showError(e); }
                 App.busy(this, false);
             });
 

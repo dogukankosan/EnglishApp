@@ -61,6 +61,7 @@ public sealed class ProfileService(
         s.ReminderTime = ParseTime(req.ReminderTime);
         s.WeeklyReportEnabled = req.WeeklyReportEnabled;
         s.WeeklyReportDay = req.WeeklyReportDay;
+        s.MonthlyReportEnabled = req.MonthlyReportEnabled;
         s.TtsVoice = string.IsNullOrWhiteSpace(req.TtsVoice) ? null : req.TtsVoice.Trim();
         s.TtsRate = req.TtsRate;
 
@@ -109,6 +110,7 @@ public sealed class ProfileService(
         ReminderTime = s.ReminderTime.ToString(@"hh\:mm", CultureInfo.InvariantCulture),
         WeeklyReportEnabled = s.WeeklyReportEnabled,
         WeeklyReportDay = s.WeeklyReportDay,
+        MonthlyReportEnabled = s.MonthlyReportEnabled,
         TtsVoice = s.TtsVoice,
         TtsRate = s.TtsRate,
         PlacementTestDone = s.PlacementTestDone,

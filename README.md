@@ -13,7 +13,7 @@ Gerçek hayat senaryolarıyla İngilizce öğrenme uygulaması. Detaylar: [docs/
 
 ## Lokal kurulum
 
-1. DB (tek seferlik): `database/` altındaki script'ler numara sırasıyla çalıştırılır (`000` → `010`). `003` ve sonrası tekrar çalıştırmaya güvenlidir. Dosyalar UTF-8 (BOM'lu); sqlcmd ile çalıştırırken `-f 65001` ver, yoksa Türkçe karakterler bozulur.
+1. DB (tek seferlik): `database/` altındaki script'ler numara sırasıyla çalıştırılır (`000` → `011`). `003` ve sonrası tekrar çalıştırmaya güvenlidir. Dosyalar UTF-8 (BOM'lu); sqlcmd ile çalıştırırken `-f 65001` ver, yoksa Türkçe karakterler bozulur.
    ```bash
    sqlcmd -S .\SQL2025 -U sa -P *** -C -I -f 65001 -d master -i database/000_CreateDatabase.sql
    ```

@@ -55,6 +55,7 @@
     $('#sReminderTime').val(s.reminderTime);
     $('#sWeekly').prop('checked', s.weeklyReportEnabled);
     $('#sWeeklyDay').val(s.weeklyReportDay);
+    $('#sMonthly').prop('checked', s.monthlyReportEnabled);
     $('#sRate').val(s.ttsRate);
 
     // ---- Hedef ----
@@ -122,6 +123,7 @@
             reminderTime: $('#sReminderTime').val() || '20:00',
             weeklyReportEnabled: $('#sWeekly').is(':checked'),
             weeklyReportDay: parseInt($('#sWeeklyDay').val(), 10),
+            monthlyReportEnabled: $('#sMonthly').is(':checked'),
             ttsVoice: $('#sVoice').val() || null,
             ttsRate: parseFloat($('#sRate').val())
         };

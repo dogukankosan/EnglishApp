@@ -21,6 +21,8 @@ public sealed class UserSettingsRow
     public byte? TargetLevel { get; set; }
     public DateTime? TargetDate { get; set; }
     public bool StreakFreeze { get; set; } = true;
+    public bool MonthlyReportEnabled { get; set; }
+    public DateTime? LastMonthlyReportSentDate { get; set; }
 }
 
 public interface IUserSettingsRepository
@@ -40,7 +42,8 @@ public sealed class UserSettingsRepository(IDbConnectionFactory db) : IUserSetti
             """
             SELECT UserId, DailyNewWordLimit, DailyReviewLimit, DesiredRetention, ReminderEnabled, ReminderTime,
                    WeeklyReportEnabled, WeeklyReportDay, LastReminderSentDate, LastWeeklyReportSentDate,
-                   TtsVoice, TtsRate, PlacementTestDone, TargetLevel, TargetDate, StreakFreeze
+                   TtsVoice, TtsRate, PlacementTestDone, TargetLevel, TargetDate, StreakFreeze,
+                   MonthlyReportEnabled, LastMonthlyReportSentDate
             FROM study.UserSettings WHERE UserId = @userId
             """, new { userId }, cancellationToken: ct));
 
@@ -63,14 +66,14 @@ public sealed class UserSettingsRepository(IDbConnectionFactory db) : IUserSetti
             UPDATE study.UserSettings
             SET DailyNewWordLimit = @DailyNewWordLimit, DailyReviewLimit = @DailyReviewLimit,
                 DesiredRetention = @DesiredRetention, ReminderEnabled = @ReminderEnabled, ReminderTime = @ReminderTime,
-                WeeklyReportEnabled = @WeeklyReportEnabled, WeeklyReportDay = @WeeklyReportDay,
+                WeeklyReportEnabled = @WeeklyReportEnabled, WeeklyReportDay = @WeeklyReportDay, MonthlyReportEnabled = @MonthlyReportEnabled,
                 TtsVoice = @TtsVoice, TtsRate = @TtsRate, UpdatedAt = @now
             WHERE UserId = @UserId
             """,
             new
             {
                 s.UserId, s.DailyNewWordLimit, s.DailyReviewLimit, s.DesiredRetention, s.ReminderEnabled, s.ReminderTime,
-                s.WeeklyReportEnabled, s.WeeklyReportDay, s.TtsVoice, s.TtsRate, now
+                s.WeeklyReportEnabled, s.WeeklyReportDay, s.MonthlyReportEnabled, s.TtsVoice, s.TtsRate, now
             }, cancellationToken: ct));
     }
 

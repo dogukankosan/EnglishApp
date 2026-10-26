@@ -31,7 +31,7 @@ public enum KnownWordSource : byte { PlacementTest = 1, Manual = 2 }
 
 public enum RevokeReason : byte { Rotated = 1, Logout = 2, PasswordChanged = 3, ReuseDetected = 4, AdminAction = 5 }
 
-public enum MailType : byte { DailyReminder = 1, WeeklyReport = 2, Test = 3, AccountInfo = 4 }
+public enum MailType : byte { DailyReminder = 1, WeeklyReport = 2, Test = 3, AccountInfo = 4, MonthlyReport = 5 }
 
 public enum MailStatus : byte { Sent = 1, Failed = 2 }
 
