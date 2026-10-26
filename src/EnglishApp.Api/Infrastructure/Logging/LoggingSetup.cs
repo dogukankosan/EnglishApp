@@ -26,6 +26,8 @@ public static class LoggingSetup
            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
            .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
            .MinimumLevel.Override("System", LogEventLevel.Warning)
+           // "Anahtar şifresiz saklanıyor" uyarısı her açılışta gelir; anahtarlar App_Data'da (web'den erişilemez)
+           .MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", LogEventLevel.Error)
            .Enrich.FromLogContext()
            .Enrich.With(new TrTimeEnricher())
            .Enrich.WithProperty("SourceApp", SourceApp)

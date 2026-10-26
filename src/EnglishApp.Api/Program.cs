@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Globalization;
 using System.Threading.RateLimiting;
 using EnglishApp.Api.Data;
@@ -37,6 +38,11 @@ try
     // ---------- Altyapı ----------
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddMemoryCache();
+    // ASP.NET'in iç veri koruma anahtarları kalıcı klasörde dursun (her açılışta yeniden üretilip log kirletmesin)
+    builder.Services.AddDataProtection()
+        .SetApplicationName("EnglishApp.Api")
+        .PersistKeysToFileSystem(new DirectoryInfo(
+            builder.Configuration["DataProtection:KeysPath"] ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys")));
     builder.Services.AddSingleton<ITrClock, TrClock>();
     builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
     builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
