@@ -81,6 +81,23 @@ try
 
     var app = builder.Build();
 
+    // Hosting HTTPS'i önündeki bir sunucuda (proxy, Cloudflare) çözüp uygulamaya HTTP iletiyorsa
+    // Hosting:ForwardedHeaders=true: gerçek protokol (https) ve kullanıcı IP'si (rate limit, log) başlıklardan okunur.
+    // Sadece uygulamaya proxy dışından doğrudan erişilemiyorsa açılmalı (başlık sahtelenemesin).
+    if (app.Configuration.GetValue("Hosting:ForwardedHeaders", false))
+    {
+        var fh = new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                             | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+            // Cloudflare için: "CF-Connecting-IP"
+            ForwardedForHeaderName = app.Configuration["Hosting:ForwardedForHeader"] ?? "X-Forwarded-For"
+        };
+        fh.KnownIPNetworks.Clear();
+        fh.KnownProxies.Clear();
+        app.UseForwardedHeaders(fh);
+    }
+
     // Arayüz her zaman Türkçe (sunucunun dili ne olursa olsun)
     var tr = new CultureInfo("tr-TR");
     app.UseRequestLocalization(new RequestLocalizationOptions
@@ -99,8 +116,10 @@ try
     else
     {
         app.UseExceptionHandler("/Error/500");
+        // HSTS başlığı yalnızca HTTPS isteklerinde gönderilir (döngü yapmaz)
         app.UseHsts();
-        app.UseHttpsRedirection();
+        // HTTP→HTTPS yönlendirmesini hosting yapıyorsa kapalı kalır (çift yönlendirme / döngü olmasın)
+        if (app.Configuration.GetValue("Hosting:HttpsRedirection", false)) app.UseHttpsRedirection();
     }
 
     // 404, 403 vb.: gövdesi boş hata yanıtları için hata sayfası (BFF JSON yanıtlarına dokunmaz)

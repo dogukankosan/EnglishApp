@@ -213,6 +213,24 @@ builder.Services.AddScoped<EnglishApp.Api.Services.Ai.IReadingService, EnglishAp
 
     var app = builder.Build();
 
+    // ---------- Hosting (HTTPS / proxy) ----------
+    // Hosting HTTPS'i önündeki bir sunucuda (proxy, Cloudflare) çözüp uygulamaya HTTP iletiyorsa
+    // Hosting:ForwardedHeaders=true yapılır: gerçek protokol (https) ve kullanıcı IP'si başlıklardan okunur.
+    // Sadece uygulamaya proxy dışından doğrudan erişilemiyorsa açılmalı (başlık sahtelenemesin).
+    if (app.Configuration.GetValue("Hosting:ForwardedHeaders", false))
+    {
+        var fh = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+        {
+            ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                             | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto,
+            // Cloudflare için: "CF-Connecting-IP"
+            ForwardedForHeaderName = app.Configuration["Hosting:ForwardedForHeader"] ?? "X-Forwarded-For"
+        };
+        fh.KnownIPNetworks.Clear();
+        fh.KnownProxies.Clear();
+        app.UseForwardedHeaders(fh);
+    }
+
     // ---------- Pipeline ----------
     app.Use((ctx, next) =>
 {
@@ -255,8 +273,10 @@ app.UseMiddleware<ForwardedClientIpMiddleware>();
 
     if (!app.Environment.IsDevelopment())
     {
+        // HSTS başlığı yalnızca HTTPS isteklerinde gönderilir (döngü yapmaz)
         app.UseHsts();
-        app.UseHttpsRedirection();
+        // HTTP→HTTPS yönlendirmesini hosting yapıyorsa kapalı kalır (çift yönlendirme / döngü olmasın)
+        if (app.Configuration.GetValue("Hosting:HttpsRedirection", false)) app.UseHttpsRedirection();
     }
 
     app.UseAuthentication();
