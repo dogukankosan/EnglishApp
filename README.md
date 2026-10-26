@@ -48,14 +48,14 @@ AI ile üretilen yeni senaryolar ve kelime havuzu için: **Admin > İçerik > Ek
 Var olan dosyalar atlanır. İlk çalıştırmada Kokoro modeli (~340 MB) `tools/audiogen/models/` altına iner (repo'ya girmez).
 Dosya adı kuralı `src/EnglishApp.Shared/Common/AudioNaming.cs` ile aynıdır, `AudioTests` bunu kontrol eder.
 
-## Canlıya alma (MonsterASP)
+## Canlıya alma
 
-API ve Web ayrı sitelere publish edilir. Her biri için `appsettings.Production.json` oluştur (repo'ya girmez):
+.NET 10 ve SQL Server destekleyen herhangi bir sunucuya kurulabilir (Windows/IIS, Linux, Docker vb.). API ve Web ayrı sitelere publish edilir; veritabanı için `database/` altındaki script'ler sırayla çalıştırılır. Her biri için `appsettings.Production.json` oluştur (repo'ya girmez):
 
 **API**
 ```json
 {
-  "ConnectionStrings": { "Default": "MonsterASP SQL bağlantısı" },
+  "ConnectionStrings": { "Default": "SQL Server bağlantı cümlesi" },
   "Jwt": { "Key": "en az 32 karakter, lokaldekinden FARKLI" },
   "Encryption": { "Key": "32 byte base64, lokaldekinden FARKLI" },
   "Bff": { "SharedKey": "Web ile aynı rastgele anahtar" },
@@ -67,13 +67,13 @@ API ve Web ayrı sitelere publish edilir. Her biri için `appsettings.Production
 ```json
 {
   "Api": { "BaseUrl": "https://api-adresin", "BffKey": "API ile aynı anahtar" },
-  "ConnectionStrings": { "Logs": "MonsterASP SQL bağlantısı" }
+  "ConnectionStrings": { "Logs": "SQL Server bağlantı cümlesi" }
 }
 ```
 
 Sonra:
 1. Admin > Ayarlar: SMTP bilgileri, `Jobs.SecretKey`, `General.AppUrl`. "Test maili gönder" ile SMTP'yi doğrula.
    Yapay zeka için **Gemini API anahtarı** (aistudio.google.com > Get API key, ücretsiz). İstersen yedek olarak OpenRouter (`:free` model) ve Groq anahtarları.
-2. cron-job.org'da 15 dakikada bir: `POST https://api-adresin/api/v1/jobs/run`, header `X-Job-Key: {Jobs.SecretKey}`.
+2. Bir zamanlayıcı servisinde (ör. cron-job.org) 15 dakikada bir: `POST https://api-adresin/api/v1/jobs/run`, header `X-Job-Key: {Jobs.SecretKey}`.
 
 > Not: `Encryption:Key` değişirse DB'deki şifreli ayarlar (SMTP şifresi vb.) çözülemez, yeniden girilmesi gerekir.

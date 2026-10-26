@@ -106,7 +106,7 @@ EnglishApp.sln
 - Pasif veya silinmiş kullanıcı giriş yapamaz, mevcut token'ı da reddedilir.
 - **Şifre politikası:** en az 8 karakter, en az 1 harf ve 1 rakam.
 - **İlk admin:** API ilk açılışta hiç admin yoksa `appsettings.json`'daki bilgilerle admin oluşturur, ilk girişte şifre değiştirmeyi zorunlu tutar.
-- SQL bağlantısı: lokalde `sa`, canlıda MonsterASP'nin verdiği DB kullanıcısı. Bağlantı bilgisi `appsettings.json`'da.
+- SQL bağlantısı: lokalde `sa`, canlıda hosting'in verdiği DB kullanıcısı. Bağlantı bilgisi `appsettings.json`'da.
 - Tüm SQL sorguları **parametreli** (Dapper). String birleştirerek SQL yazılmaz.
 
 ### Yetkiler
@@ -132,7 +132,7 @@ Admin kendi hesabını pasife alamaz ve silemez (sistemde admin kalmama riskine 
 
 ## 6. Veritabanı
 
-- **SQL Server 2025** (lokal: `.\SQL2025`, canlı: MonsterASP)
+- **SQL Server 2025** (lokal: `.\SQL2025`)
 - **Dapper** ile erişim. EF Core yok.
 - Tüm sorgular async, kısa ömürlü bağlantı (connection pool).
 - Detaylar: `docs/02_DB_TASARIMI.md`
@@ -186,7 +186,7 @@ Sunucunun dili, saati ve collation'ı Türkiye'den farklı. Bu yüzden:
 - Tetikleme: dış bir cron servisi (ör. cron-job.org) API'deki korumalı `/api/v1/jobs/run` adresini 15 dakikada bir çağırır (gizli anahtar ile). IIS uyku moduna geçse de çalışır.
 - Aynı gün aynı mail iki kez gitmez (`LastReminderSentDate` kontrolü).
 - Tüm gönderimler `app.EmailLogs` tablosuna yazılır.
-- MonsterASP'de dış SMTP portunun açık olduğu projenin başında test maili ile doğrulanacak.
+- Sunucuda dış SMTP portunun açık olduğu kurulumda test maili ile doğrulanır.
 
 ## 11. Loglama
 
@@ -221,9 +221,8 @@ Sunucunun dili, saati ve collation'ı Türkiye'den farklı. Bu yüzden:
 
 ## 13. Hosting
 
-- **MonsterASP.NET** (ücretsiz plan): API ve Web ayrı siteler, SQL Server 2025, .NET 10
-- Geliştirme lokal: `C:\Users\DOGUKAN\source\repos\EnglishApp`
-- Git / GitHub: ileride
+- .NET 10 ve SQL Server destekleyen herhangi bir hosting (Windows/IIS, Linux, Docker vb.). API ve Web ayrı siteler.
+- Kaynak kod: GitHub (private).
 
 ## 14. İçerik Kaynakları
 
@@ -297,7 +296,7 @@ Notlar:
 
 ## 16. Açık Konular
 
-- [ ] MonsterASP'de dış SMTP testi
-- [ ] MonsterASP'de `ALTER DATABASE` izinleri
+- [ ] Canlı sunucuda dış SMTP testi
+- [ ] Canlı veritabanında `ALTER DATABASE` izinleri
 - [ ] NGSL listesinin içe aktarılması ve Türkçe anlamların üretilmesi (araç hazır: Admin > İçerik)
-- [ ] GitHub private repo
+- [x] GitHub private repo
