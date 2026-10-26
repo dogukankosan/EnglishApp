@@ -496,3 +496,6 @@ tools/audiogen/audio-manifest.json
 
 # Admin > Loglar sayfası (yukarıdaki [Ll]ogs/ kuralından muaf)
 !src/EnglishApp.Web/Areas/Admin/Views/Logs/
+
+# Hazır ses dosyaları repo'ya girmez (tools/audiogen ile üretilir, canlıya ayrıca kopyalanır)
+src/EnglishApp.Api/Content/audio/*.mp3

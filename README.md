@@ -28,7 +28,7 @@ Gerçek hayat senaryolarıyla İngilizce öğrenme uygulaması. Detaylar: [docs/
 
 | Ne | Nasıl | Nerede |
 |---|---|---|
-| Kelime, örnek cümle, senaryo diyalogları | **Kokoro** ile önceden üretilmiş MP3, Amerikan + İngiliz aksanı | `src/EnglishApp.Api/Content/audio/` (~7 MB, yayına kopyalanır) |
+| Kelime, örnek cümle, senaryo diyalogları | **Kokoro** ile önceden üretilmiş MP3, Amerikan + İngiliz aksanı | `src/EnglishApp.Api/Content/audio/` (**repo'da yok**, ~170 MB; bu bilgisayardan publish edilirse yayına kopyalanır) |
 | AI'ın konuşmadaki cevapları | **Gemini TTS** (anlık), sunucuda önbelleklenir | `App_Data/tts-cache/` |
 | Yedek | Tarayıcının kendi sesi | MP3 yoksa veya Gemini kotası dolarsa |
 
@@ -44,6 +44,8 @@ AI ile üretilen yeni senaryolar ve kelime havuzu için: **Admin > İçerik > Ek
 .venv\Scripts\python generate_audio.py --manifest-url audio-manifest.json
 ```
 Üretilen MP3'leri `src/EnglishApp.Api/Content/audio/` klasörüne (canlıda sunucudaki aynı klasöre) kopyala.
+
+> Ses dosyaları GitHub'a girmez (`.gitignore`). Yeni bir bilgisayarda klonlayınca `generate_audio.py` ile yeniden üretilir (`--manifest-url` ile tümü) ya da mevcut `Content/audio` klasörü kopyalanır. Canlıya alırken bu klasör sunucudaki `Content/audio` altına ayrıca kopyalanmalı.
 
 Var olan dosyalar atlanır. İlk çalıştırmada Kokoro modeli (~340 MB) `tools/audiogen/models/` altına iner (repo'ya girmez).
 Dosya adı kuralı `src/EnglishApp.Shared/Common/AudioNaming.cs` ile aynıdır, `AudioTests` bunu kontrol eder.
