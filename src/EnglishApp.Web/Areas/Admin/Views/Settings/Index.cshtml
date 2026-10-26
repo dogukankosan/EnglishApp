@@ -24,7 +24,7 @@
     <div class="card-body small">
         <p class="mb-2">Dış bir zamanlayıcı servisi (ör. <b>cron-job.org</b>, ücretsiz) her 15 dakikada bir API'yi çağırmalı:</p>
         <pre class="log-pre mb-2">POST {API adresi}/api/v1/jobs/run
-Header: X-Job-Key: {Jobs.SecretKey ayarındaki değer}</pre>
+Header: X-Job-Key: {Zamanlanmış işler > Cron tetikleme gizli anahtarı}</pre>
         <p class="mb-0 text-body-secondary">Sunucu uykuya geçse bile hatırlatmalar zamanında gider. Gece 03:00'ten sonraki ilk çağrıda eski loglar da temizlenir.</p>
     </div>
 </div>
@@ -72,7 +72,7 @@ Header: X-Job-Key: {Jobs.SecretKey ayarındaki değer}</pre>
                     <label class="form-label small fw-semibold" for="${id}">
                         ${s.isEncrypted ? '<i class="bi bi-lock-fill text-warning me-1" title="Şifreli saklanır"></i>' : ''}${esc(s.descriptionTr || s.key)}
                     </label>`;
-                const help = `<div class="form-text"><code>${esc(s.key)}</code>${s.updatedAt ? ' · ' + fmt.dateTime(s.updatedAt) : ''}</div>`;
+                const help = s.updatedAt ? `<div class="form-text">Son güncelleme: ${fmt.dateTime(s.updatedAt)}</div>` : '';
 
                 if (htmlKeys.includes(s.key)) {
                     return `
