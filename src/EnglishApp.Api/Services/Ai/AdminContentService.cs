@@ -45,7 +45,7 @@ public sealed partial class AdminContentService(
     ITrClock clock,
     ILogger<AdminContentService> logger) : IAdminContentService
 {
-    private const int EnrichBatchSize = 25;
+    private const int EnrichBatchSize = 15;
 
     public async Task<IReadOnlyList<ScenarioCategoryDto>> CategoriesAsync(CancellationToken ct)
     {

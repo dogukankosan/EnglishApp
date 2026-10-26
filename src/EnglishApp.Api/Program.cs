@@ -75,8 +75,8 @@ builder.Services.AddHttpClient(TurnstileService.HttpClientName, c => c.Timeout =
 
     // ---------- Yapay zeka ----------
     builder.Services.AddHttpClient(EnglishApp.Api.Infrastructure.Llm.OpenAiCompatibleClient.HttpClientName,
-        // Takılan bir model kullanıcıyı uzun bekletmesin: 25 sn'de vazgeçip sıradaki modele geçilir
-        c => c.Timeout = TimeSpan.FromSeconds(25));
+        // Üst sınır. Asıl süre istek başına verilir (sohbet 25 sn, içerik üretimi daha uzun), sonra sıradaki modele geçilir.
+        c => c.Timeout = TimeSpan.FromMinutes(2));
     builder.Services.AddSingleton<EnglishApp.Api.Infrastructure.Llm.OpenAiCompatibleClient>();
     builder.Services.AddScoped<EnglishApp.Api.Services.Ai.ILlmService, EnglishApp.Api.Services.Ai.LlmService>();
     builder.Services.AddScoped<EnglishApp.Api.Services.Ai.IConversationService, EnglishApp.Api.Services.Ai.ConversationService>();

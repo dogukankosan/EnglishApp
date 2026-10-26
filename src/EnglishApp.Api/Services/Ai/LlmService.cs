@@ -77,6 +77,10 @@ public sealed class LlmService(
                 "Bugünkü yapay zeka hakkın doldu. Yarın tekrar kullanabilirsin; kelime ve cümle çalışmaya devam edebilirsin.", StatusCodes.Status429TooManyRequests);
     }
 
+    /// <summary>Sohbet gibi anlık işler hızlı yedeğe geçsin; uzun içerik üretimi (kelime listesi, senaryo, okuma) bitebilsin.</summary>
+    public static TimeSpan TimeoutFor(AiFeature feature, bool preferFast) =>
+        preferFast ? TimeSpan.FromSeconds(25) : feature == AiFeature.ContentGeneration ? TimeSpan.FromSeconds(90) : TimeSpan.FromSeconds(45);
+
     public async Task<LlmJsonResult<T>> GenerateJsonAsync<T>(int? userId, AiFeature feature, IReadOnlyList<LlmMessage> messages,
         LlmJsonSchema schema, double temperature, Func<T, bool> isValid, CancellationToken ct = default, bool preferFast = false) where T : class
     {
@@ -97,7 +101,7 @@ public sealed class LlmService(
         foreach (var p in providers)
         {
             var isFallback = attempt++ > 0;
-            var result = await client.CompleteAsync(p, messages, temperature, schema, ct);
+            var result = await client.CompleteAsync(p, messages, temperature, schema, ct, TimeoutFor(feature, preferFast));
 
             T? data = null;
             string? errorCode = result.ErrorCode;

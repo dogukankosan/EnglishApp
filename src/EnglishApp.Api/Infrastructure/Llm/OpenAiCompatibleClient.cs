@@ -55,22 +55,26 @@ public sealed class OpenAiCompatibleClient(IHttpClientFactory httpFactory, ILogg
         return string.IsNullOrWhiteSpace(overrideUrl) ? DefaultBaseUrls[provider] : overrideUrl.TrimEnd('/') + "/";
     }
 
+    /// <summary>Varsayılan bekleme süresi: takılan model kullanıcıyı uzun bekletmesin, sıradaki modele geçilsin.</summary>
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(25);
+
+    /// <param name="timeout">Bu istek için bekleme süresi (uzun içerik üretimi için artırılır). Boşsa <see cref="DefaultTimeout"/>.</param>
     public async Task<LlmCallResult> CompleteAsync(LlmProviderConfig cfg, IReadOnlyList<LlmMessage> messages,
-        double temperature, LlmJsonSchema? schema, CancellationToken ct)
+        double temperature, LlmJsonSchema? schema, CancellationToken ct, TimeSpan? timeout = null)
     {
-        var first = await SendAsync(cfg, messages, temperature, schema, cfg.ReasoningEffort, ct);
+        var first = await SendAsync(cfg, messages, temperature, schema, cfg.ReasoningEffort, timeout ?? DefaultTimeout, ct);
 
         // Bazı modeller reasoning_effort parametresini tanımaz: bir kez onsuz dene
         if (!first.Success && first.ErrorCode == "HTTP_400" && !string.IsNullOrEmpty(cfg.ReasoningEffort))
         {
             logger.LogWarning("{Provider}/{Model} reasoning_effort'u kabul etmedi, parametresiz tekrar deneniyor.", cfg.Provider, cfg.Model);
-            return await SendAsync(cfg, messages, temperature, schema, null, ct);
+            return await SendAsync(cfg, messages, temperature, schema, null, timeout ?? DefaultTimeout, ct);
         }
         return first;
     }
 
     private async Task<LlmCallResult> SendAsync(LlmProviderConfig cfg, IReadOnlyList<LlmMessage> messages,
-        double temperature, LlmJsonSchema? schema, string? reasoningEffort, CancellationToken ct)
+        double temperature, LlmJsonSchema? schema, string? reasoningEffort, TimeSpan timeout, CancellationToken ct)
     {
         var body = new JsonObject
         {
@@ -99,10 +103,12 @@ public sealed class OpenAiCompatibleClient(IHttpClientFactory httpFactory, ILogg
         if (cfg.Provider == LlmProvider.OpenRouter) request.Headers.TryAddWithoutValidation("X-Title", "EnglishApp");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(timeout);
         try
         {
-            using var response = await httpFactory.CreateClient(HttpClientName).SendAsync(request, ct);
-            var text = await response.Content.ReadAsStringAsync(ct);
+            using var response = await httpFactory.CreateClient(HttpClientName).SendAsync(request, timeoutCts.Token);
+            var text = await response.Content.ReadAsStringAsync(timeoutCts.Token);
             sw.Stop();
             var ms = (int)sw.ElapsedMilliseconds;
 
@@ -133,7 +139,7 @@ public sealed class OpenAiCompatibleClient(IHttpClientFactory httpFactory, ILogg
             }
             return new LlmCallResult(true, content, input, output, total, ms, null, null, false);
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             return new LlmCallResult(false, null, 0, 0, 0, (int)sw.ElapsedMilliseconds, "TIMEOUT", "İstek zaman aşımına uğradı.", true);
         }
