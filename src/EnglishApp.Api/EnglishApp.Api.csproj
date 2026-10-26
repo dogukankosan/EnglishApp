@@ -26,4 +26,9 @@
     <Content Include="Content\audio\**\*.mp3" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Yerel gizli ayarlar (ve örnekleri) yayın paketine girmez -->
+    <Content Update="appsettings.Development*.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>
