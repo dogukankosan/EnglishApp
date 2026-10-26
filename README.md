@@ -1,5 +1,8 @@
 # EnglishApp
 
+<img width="1228" height="926" alt="web" src="https://github.com/user-attachments/assets/cce1245e-7cda-4d48-8448-dba32a9978fb" />
+
+
 Gerçek hayat senaryolarıyla İngilizce öğrenme uygulaması. Hedef: yurt dışında insanları anlayabilmek (önce dinleme ve anlama, sonra konuşma). Tamamen ücretsiz servislerle çalışır.
 
 Detaylar: [docs/01_PROJE_DOKUMANI.md](docs/01_PROJE_DOKUMANI.md), [docs/02_DB_TASARIMI.md](docs/02_DB_TASARIMI.md).
