@@ -19,6 +19,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Kütüphanelerin sadece Türkçe dil dosyaları yayına girsin (es, fr, ja... gereksiz) -->
+    <SatelliteResourceLanguages>tr</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
