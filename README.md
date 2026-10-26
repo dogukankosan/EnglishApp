@@ -68,8 +68,7 @@ Dosya adı kuralı `src/EnglishApp.Shared/Common/AudioNaming.cs` ile aynıdır, 
 **Web**
 ```json
 {
-  "Api": { "BaseUrl": "https://api-adresin", "BffKey": "API ile aynı anahtar" },
-  "ConnectionStrings": { "Logs": "SQL Server bağlantı cümlesi" }
+  "Api": { "BaseUrl": "https://api-adresin", "BffKey": "API ile aynı anahtar" }
 }
 ```
 

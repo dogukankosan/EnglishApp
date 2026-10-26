@@ -195,6 +195,7 @@ Sunucunun dili, saati ve collation'ı Türkiye'den farklı. Bu yüzden:
 - **Serilog**
   - Dosya: günlük dönen dosyalar, tüm seviyeler
   - SQL: `app.Logs` tablosu, **Warning ve üstü**
+  - Web veritabanına bağlanmaz: kendi Warning ve üstü loglarını 3 sn'lik partilerle API'ye gönderir (`POST /api/v1/internal/logs`, sadece `Bff:SharedKey` ile), API `app.Logs`'a `SourceApp = Web` olarak yazar. API'ye ulaşılamazsa birkaç dakika yeniden dener; dosya logu her durumda yazılır.
 - **Global hata yakalayıcı** middleware (API ve MVC'de): yakalanmamış her hata detaylı loglanır (kullanıcı, adres, parametreler, stack trace). Kullanıcıya sadece "Bir hata oluştu. Kod: XXXX" gösterilir, iç detay sızmaz.
 - **Kritik noktalarda try-catch:** LLM çağrıları (yedeğe geçiş), mail gönderimi, login/token, dosya yükleme, DB yazma işlemleri, cron işleri. Yakalanan hata **mutlaka loglanır**, sessizce yutulmaz.
 - **Correlation ID:** MVC'den API'ye her istek `X-Correlation-Id` başlığını taşır. Bir hatanın iki projedeki izi tek numarayla bulunur.

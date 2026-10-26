@@ -1,10 +1,8 @@
-using System.Collections.ObjectModel;
-using System.Data;
 using Serilog;
+using Serilog.Configuration;
 using Serilog.Context;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Sinks.MSSqlServer;
 
 namespace EnglishApp.Web.Infrastructure;
 
@@ -35,7 +33,6 @@ public static class WebLogging
 {
     public static void Configure(LoggerConfiguration cfg, IConfiguration configuration, IHostEnvironment env)
     {
-        var connectionString = configuration.GetConnectionString("Logs");
         var logPath = configuration["Logging:FilePath"] ?? Path.Combine(env.ContentRootPath, "App_Data", "logs");
 
         cfg.MinimumLevel.Information()
@@ -60,31 +57,19 @@ public static class WebLogging
                shared: true,
                outputTemplate: "{TrTime:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{CorrelationId}] [U:{UserId}] {RequestMethod} {RequestPath} {Message:lj}{NewLine}{Exception}");
 
-        if (!string.IsNullOrWhiteSpace(connectionString))
+        // Uyarı ve üstü loglar API'ye gönderilir (API app.Logs'a yazar); Web veritabanına bağlanmaz
+        var apiBaseUrl = configuration["Api:BaseUrl"];
+        var bffKey = configuration["Api:BffKey"];
+        if (!string.IsNullOrWhiteSpace(apiBaseUrl) && !string.IsNullOrWhiteSpace(bffKey))
         {
-            var co = new ColumnOptions();
-            co.Id.DataType = SqlDbType.BigInt;
-            co.Store.Remove(StandardColumn.TimeStamp);
-            co.Store.Remove(StandardColumn.Properties);
-            co.Store.Add(StandardColumn.LogEvent);
-            co.LogEvent.ColumnName = "Properties";
-            co.LogEvent.ExcludeAdditionalProperties = true;
-            co.LogEvent.ExcludeStandardColumns = true;
-            co.AdditionalColumns = new Collection<SqlColumn>
-            {
-                new() { ColumnName = "TimeStamp", DataType = SqlDbType.DateTime2, PropertyName = "TrTime", AllowNull = false },
-                new() { ColumnName = "SourceApp", DataType = SqlDbType.VarChar, DataLength = 10 },
-                new() { ColumnName = "CorrelationId", DataType = SqlDbType.VarChar, DataLength = 50 },
-                new() { ColumnName = "UserId", DataType = SqlDbType.Int },
-                new() { ColumnName = "RequestPath", DataType = SqlDbType.NVarChar, DataLength = 400 },
-                new() { ColumnName = "RequestMethod", DataType = SqlDbType.VarChar, DataLength = 10 },
-                new() { ColumnName = "ClientIp", DataType = SqlDbType.VarChar, DataLength = 45 },
-                new() { ColumnName = "MachineName", DataType = SqlDbType.NVarChar, DataLength = 100 }
-            };
-
-            cfg.WriteTo.MSSqlServer(connectionString,
-                sinkOptions: new MSSqlServerSinkOptions { SchemaName = "app", TableName = "Logs", AutoCreateSqlTable = false },
-                columnOptions: co,
+            cfg.WriteTo.Sink(new ApiLogSink(apiBaseUrl, bffKey),
+                new BatchingOptions
+                {
+                    BatchSizeLimit = 50,
+                    BufferingTimeLimit = TimeSpan.FromSeconds(3),
+                    QueueLimit = 2000,
+                    RetryTimeLimit = TimeSpan.FromMinutes(10)
+                },
                 restrictedToMinimumLevel: LogEventLevel.Warning);
         }
     }
