@@ -152,10 +152,13 @@ try
     app.UseSerilogRequestLogging(o =>
     {
         o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} ({Elapsed:0} ms)";
-        o.GetLevel = (ctx, elapsed, ex) =>
-            ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
-            : elapsed > 2000 ? Serilog.Events.LogEventLevel.Warning
-            : Serilog.Events.LogEventLevel.Information;
+        // Normal istekler 2 sn'den, yapay zeka istekleri 10 sn'den yavaşsa uyarı; yapay zeka kotası dolunca (503) uyarı
+        o.GetLevel = (ctx, elapsed, ex) => EnglishApp.Shared.Common.RequestLogLevels.Get(ctx.Request.Path.Value, ctx.Response.StatusCode, elapsed, ex is not null, 2000) switch
+        {
+            EnglishApp.Shared.Common.RequestLogLevel.Error => Serilog.Events.LogEventLevel.Error,
+            EnglishApp.Shared.Common.RequestLogLevel.Warning => Serilog.Events.LogEventLevel.Warning,
+            _ => Serilog.Events.LogEventLevel.Information
+        };
     });
     app.UseAuthorization();
 

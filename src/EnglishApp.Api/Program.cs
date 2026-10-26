@@ -254,10 +254,13 @@ app.UseMiddleware<ForwardedClientIpMiddleware>();
     {
         o.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} ({Elapsed:0} ms)";
         // 1 saniyeden yavaş istekler Warning, 5xx Error
-        o.GetLevel = (ctx, elapsed, ex) =>
-            ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
-            : elapsed > 1000 ? Serilog.Events.LogEventLevel.Warning
-            : Serilog.Events.LogEventLevel.Information;
+        // Normal istekler 1 sn'den, yapay zeka istekleri 10 sn'den yavaşsa uyarı; yapay zeka kotası dolunca (503) uyarı
+        o.GetLevel = (ctx, elapsed, ex) => RequestLogLevels.Get(ctx.Request.Path.Value, ctx.Response.StatusCode, elapsed, ex is not null, 1000) switch
+        {
+            RequestLogLevel.Error => Serilog.Events.LogEventLevel.Error,
+            RequestLogLevel.Warning => Serilog.Events.LogEventLevel.Warning,
+            _ => Serilog.Events.LogEventLevel.Information
+        };
     });
     app.UseMiddleware<ExceptionMiddleware>();
 

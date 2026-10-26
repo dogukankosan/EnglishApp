@@ -372,7 +372,7 @@ public sealed class JobService(
         sb.Append(Row("Toplam süre", $"{minutes} dk"));
         sb.Append(Row("Yeni kelime", newWords.ToString(Tr)));
         sb.Append(Row("Toplam tekrar", reviews.ToString(Tr)));
-        sb.Append(Row("Doğruluk", $"%{accuracy}"));
+        sb.Append(Row("Doğruluk", reviews == 0 ? "-" : $"%{accuracy}"));
         sb.Append(Row("Seri", $"{streak} gün"));
         sb.Append(Row("Öğrendiğin kelimeler (toplam)", (counts.Learned + counts.Known).ToString(Tr)));
         sb.Append(Row("Yarın tekrar edilecek", dueTomorrow.ToString(Tr)));
