@@ -69,10 +69,11 @@ public sealed class JobsController(IJobService jobs) : ApiControllerBase
     public const string KeyHeader = "X-Job-Key";
 
     [HttpPost("run")]
-    public async Task<ActionResult<ApiResponse<JobRunResult>>> Run(CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<JobRunResult>>> Run([FromServices] IHostApplicationLifetime lifetime, CancellationToken ct)
     {
         await jobs.ValidateKeyAsync(Request.Headers[KeyHeader].ToString(), ct);
-        return Success(await jobs.RunAsync(ct));
+        // Cron servisi beklemeyi bırakırsa (zaman aşımı) mailler yarım kalmasın: iş sadece uygulama kapanırken durur
+        return Success(await jobs.RunAsync(lifetime.ApplicationStopping));
     }
 }
 
