@@ -218,6 +218,10 @@ builder.Services.AddScoped<EnglishApp.Api.Services.Ai.IReadingService, EnglishAp
 {
     // API adresi arama motorlarında listelenmesin
     ctx.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+    // Temel güvenlik başlıkları (mobil uygulama API'ye doğrudan bağlanacak)
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
     return next();
 });
 app.UseMiddleware<ForwardedClientIpMiddleware>();

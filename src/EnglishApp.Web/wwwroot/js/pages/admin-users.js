@@ -2,6 +2,7 @@
     const { api, esc, fmt } = App;
     const modal = new bootstrap.Modal('#userModal');
     let users = [];
+    let meId = null; // admin kendi hesabını pasife alamaz / silemez: o butonlar kendi satırında gösterilmez
 
     const trLang = {
         search: '', searchPlaceholder: 'Ara…', lengthMenu: '_MENU_ kayıt', info: '_TOTAL_ kullanıcıdan _START_-_END_',
@@ -22,7 +23,7 @@
                     <div class="d-flex align-items-center gap-2">
                         ${u.profileImage ? `<img src="/bff/files/profile/${encodeURIComponent(u.profileImage)}" class="avatar avatar-md" alt="">`
                                          : `<span class="avatar avatar-md avatar-initials">${esc(initials(u.fullName))}</span>`}
-                        <div><div class="fw-semibold">${esc(u.fullName)}</div><div class="small text-body-secondary">${esc(u.email)}</div></div>
+                        <div><div class="fw-semibold">${esc(u.fullName)}${u.id === meId ? ' <span class="badge bg-primary-soft text-primary">Sen</span>' : ''}</div><div class="small text-body-secondary">${esc(u.email)}</div></div>
                     </div>`
             },
             { data: 'role', render: d => d === 'Admin' ? '<span class="badge bg-primary">Yönetici</span>' : '<span class="badge bg-secondary-subtle text-secondary">Kullanıcı</span>' },
@@ -44,10 +45,11 @@
                             <li><button class="dropdown-item" data-act="edit" data-id="${u.id}"><i class="bi bi-pencil me-2"></i>Düzenle</button></li>
                             <li><button class="dropdown-item" data-act="reset" data-id="${u.id}"><i class="bi bi-key me-2"></i>Şifre sıfırla</button></li>
                             ${u.isLocked ? `<li><button class="dropdown-item" data-act="unlock" data-id="${u.id}"><i class="bi bi-unlock me-2"></i>Kilidi aç</button></li>` : ''}
+                            ${u.id === meId ? '' : `
                             <li><button class="dropdown-item" data-act="${u.isActive ? 'deactivate' : 'activate'}" data-id="${u.id}">
                                 <i class="bi ${u.isActive ? 'bi-pause-circle' : 'bi-play-circle'} me-2"></i>${u.isActive ? 'Pasife al' : 'Aktif et'}</button></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><button class="dropdown-item text-danger" data-act="delete" data-id="${u.id}"><i class="bi bi-trash me-2"></i>Sil</button></li>
+                            <li><button class="dropdown-item text-danger" data-act="delete" data-id="${u.id}"><i class="bi bi-trash me-2"></i>Sil</button></li>`}
                         </ul>
                     </div>`
             }
@@ -56,6 +58,7 @@
 
     async function load() {
         try {
+            if (meId === null) { try { meId = (await api.get('profile')).id; } catch { } }
             users = await api.get('admin/users');
             table.clear().rows.add(users).draw();
         } catch (e) { App.showError(e); }
@@ -75,7 +78,7 @@
         $('#uId').val(u?.id || '');
         $('#uName').val(u?.fullName || '');
         $('#uEmail').val(u?.email || '');
-        $('#uRole').val(u?.role || 'User');
+        $('#uRole').val(u?.role || 'User').prop('disabled', !!u && u.id === meId); // kendi rolünü düşüremez
         $('#uTokens').val(u ? (u.dailyTokenLimit ?? '') : '');
         $('#uPassword').val(u ? '' : genPassword());
         $('#pwGroup').toggle(!u);
@@ -129,7 +132,7 @@
                     const pw = genPassword();
                     if (!await App.confirm('Şifre sıfırlansın mı?', `${u.fullName} için yeni geçici şifre oluşturulacak ve tüm oturumları kapanacak.`, 'Sıfırla', 'question', false)) return;
                     await api.post(`admin/users/${id}/reset-password`, { newPassword: pw });
-                    await Swal.fire({ icon: 'success', title: 'Şifre sıfırlandı', html: `Yeni geçici şifre: <code style="font-size:1.1rem">${esc(pw)}</code>`, confirmButtonColor: '#4f46e5' });
+                    await Swal.fire({ icon: 'success', title: 'Şifre sıfırlandı', html: `Yeni geçici şifre: <code style="font-size:1.1rem">${esc(pw)}</code>`, confirmButtonColor: '#4f46e5', confirmButtonText: 'Tamam' });
                     break;
                 }
                 case 'unlock':

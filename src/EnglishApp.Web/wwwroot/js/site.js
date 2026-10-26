@@ -10,16 +10,17 @@
     }) : null;
 
     function toast(message, icon = 'success') {
-        if (Toast) Toast.fire({ icon, title: message });
+        // titleText: başlık düz metin olarak basılır (title HTML kabul eder, kullanıcı/AI verisiyle XSS olurdu)
+        if (Toast) Toast.fire({ icon, titleText: String(message ?? '') });
     }
 
     function error(message, title = 'Bir sorun oluştu') {
-        return Swal.fire({ icon: 'error', title, text: message, confirmButtonColor: '#4f46e5', confirmButtonText: 'Tamam' });
+        return Swal.fire({ icon: 'error', titleText: title, text: message, confirmButtonColor: '#4f46e5', confirmButtonText: 'Tamam' });
     }
 
     async function confirm(title, text, confirmText = 'Evet', icon = 'warning', danger = true) {
         const r = await Swal.fire({
-            icon, title, text, showCancelButton: true,
+            icon, titleText: title, text, showCancelButton: true,
             confirmButtonText: confirmText, cancelButtonText: 'Vazgeç',
             confirmButtonColor: danger ? '#ef4444' : '#4f46e5', reverseButtons: true, focusCancel: danger
         });
